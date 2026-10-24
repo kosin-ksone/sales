@@ -347,7 +347,7 @@ rebuildAllHosp();
 // อัปเดตข้อมูลหลักจากชีต (เซล/รพ./วันหยุด) — เรียกตอนโหลดจาก cache แล้วรีเฟรชจากเซิร์ฟเวอร์
 function applyMaster(m){
   if(!m) return;
-  if(m.sales && m.sales.length) SALES=m.sales;
+  if(m.sales && m.sales.length){ SALES=m.sales; mergeTrainees(); }
   if(m.hosp && Object.keys(m.hosp).length) HOSP=m.hosp;
   if(m.holidays) CFG.HOLIDAYS=m.holidays;
   if(m.workSaturdays) CFG.WORK_SATURDAYS=m.workSaturdays;
@@ -388,7 +388,35 @@ var IC={
 
 // ---------- LOGIN ----------
 function initials(full){var p=(full||'').split(' ');return (p[0]||'').slice(0,1)+((p[1]||'').slice(0,1));}
+// ---------- น้องทดลองงาน (ยังไม่มีชื่อในรายชื่อ) → เพิ่มชื่อในเครื่อง ต่อท้าย (ทดลองงาน) ----------
+var TRAINEE_KEY='kosin_sales_trainees';
+function loadTrainees(){ try{ return JSON.parse(localStorage.getItem(TRAINEE_KEY)||'[]'); }catch(e){ return []; } }
+function mergeTrainees(){ loadTrainees().forEach(function(t){ if(!SALES.some(function(s){return s.nick===t.nick;})) SALES.push(t); }); }
+function addTrainee(){
+  var host=document.getElementById('modalHost'), ov=document.createElement('div'); ov.className='ov';
+  ov.innerHTML='<div class="modal"><h3>เพิ่มชื่อน้องทดลองงาน</h3><p style="margin-bottom:8px">ระบบจะต่อท้ายชื่อว่า (ทดลองงาน) ให้เอง</p>'
+    +'<input class="note-in" id="trFull" placeholder="ชื่อ นามสกุล" style="margin-bottom:8px">'
+    +'<input class="note-in" id="trNick" placeholder="ชื่อเล่น" style="margin-bottom:8px">'
+    +'<select class="note-in" id="trReg" style="margin-bottom:6px">'+REGION_ORDER.map(function(r){return '<option>'+r+'</option>';}).join('')+'</select>'
+    +'<div id="trErr" style="color:var(--red);font-size:12px;min-height:16px"></div>'
+    +'<div class="mb"><button class="send" id="trOk">เพิ่มชื่อ</button><button class="send ghost" id="trNo">ยกเลิก</button></div></div>';
+  host.appendChild(ov);
+  var g=function(id){return ov.querySelector('#'+id);};
+  g('trNo').onclick=function(){ host.removeChild(ov); };
+  g('trOk').onclick=function(){
+    var full=g('trFull').value.trim().replace(/\s*\(ทดลองงาน\)\s*$/,''), nick=g('trNick').value.trim();
+    if(!full){ g('trErr').textContent='ใส่ชื่อ นามสกุล ก่อนนะคะ'; g('trFull').focus(); return; }
+    if(!nick){ g('trErr').textContent='ใส่ชื่อเล่นด้วยนะคะ'; g('trNick').focus(); return; }
+    if(SALES.some(function(s){return s.nick===nick;})) nick=nick+' (ทดลองงาน)';   // ชื่อเล่นซ้ำกับคนเดิม
+    var t={nick:nick, full:full+' (ทดลองงาน)', email:'', region:g('trReg').value, work:'', home:[], trainee:true};
+    var a=loadTrainees().filter(function(x){return x.nick!==nick;}); a.push(t); localStorage.setItem(TRAINEE_KEY,JSON.stringify(a));
+    if(CFG.SUBMIT_URL){ fetch(CFG.SUBMIT_URL,{method:'POST',body:JSON.stringify({action:'addTrainee',sales:t}),headers:{'Content-Type':'text/plain;charset=utf-8'}}).catch(function(){}); }
+    host.removeChild(ov); mergeTrainees(); renderLogin(); pick(nick); toast('เพิ่มชื่อแล้ว');
+  };
+  setTimeout(function(){ g('trFull').focus(); },100);
+}
 function renderLogin(){
+  mergeTrainees();
   var byReg={}; SALES.forEach(function(s){(byReg[s.region]=byReg[s.region]||[]).push(s);});
   var html='';
   REGION_ORDER.forEach(function(reg){
@@ -399,9 +427,11 @@ function renderLogin(){
     });
     html+='</div>';
   });
+  html+='<button class="namebtn" style="justify-content:center;border:1.5px dashed var(--gold);background:var(--gold-tint);margin-top:14px" onclick="addTrainee()"><span class="nm" style="text-align:center;color:var(--brand)">＋ เพิ่มชื่อน้องทดลองงาน<small>ยังไม่มีชื่อในรายชื่อ</small></span></button>';
   document.getElementById('namelist').innerHTML=html;
 }
 function pick(nick){
+  mergeTrainees();
   me = SALES.filter(function(s){return s.nick===nick;})[0];
   if(!me) return;
   localStorage.setItem('kosin_sales_me', nick);
