@@ -323,11 +323,13 @@
 </div>
 
 <script src="data.js"></script>
+<script src="zone.js"></script>
 <script src="config.js"></script>
 <script>
 var CFG = window.APP_CONFIG || {};
 var SALES = window.SALES || [];
 var HOSP = window.HOSP_BY_SALES || {};
+if(window.ZONE_SALES) HOSP = window.ZONE_SALES;   // เขตการทำงาน rev122 — ขึ้นเฉพาะ รพ. ในเขตตัวเอง (เขตอื่นพิมพ์เอง)
 var ALL_HOSP = [];
 function rebuildAllHosp(){ var s={}; Object.keys(HOSP).forEach(function(k){ (HOSP[k]||[]).forEach(function(h){ s[h]=1; }); }); ALL_HOSP=Object.keys(s).sort(); }
 rebuildAllHosp();
@@ -442,16 +444,14 @@ function showHos(q){
   var list;
   if(!q){ list=own.slice(0,50); }
   else{
-    var a=own.filter(function(h){return h.indexOf(q)>-1;});
-    var b=ALL_HOSP.filter(function(h){return h.indexOf(q)>-1 && own.indexOf(h)<0;});
-    list=a.concat(b).slice(0,60);
+    list=own.filter(function(h){return h.indexOf(q)>-1;}).slice(0,60);   // เขตอื่นไม่ขึ้น ให้พิมพ์เอง
   }
   var html='';
   list.forEach(function(h){
     var badge = isOwnHos(h) ? '' : ' <span style="font-size:10px;color:#B45309;background:#FEF3C7;padding:1px 7px;border-radius:20px;margin-left:4px">เขตอื่น</span>';
     html+='<div onclick="pickHos(\''+h.replace(/'/g,"\\'")+'\')">'+h+badge+'</div>';
   });
-  if(q && ALL_HOSP.indexOf(q)<0) html+='<div class="addnew" onclick="pickHos(\''+q.replace(/'/g,"\\'")+'\')">+ ใช้ "'+q+'" (พิมพ์เอง)</div>';
+  if(q && own.indexOf(q)<0) html+='<div class="addnew" onclick="pickHos(\''+q.replace(/'/g,"\\'")+'\')">+ ใช้ "'+q+'" (พิมพ์เอง)</div>';
   hosList.innerHTML=html || '<div style="padding:8px;color:#9aa0a8">ไม่พบ — พิมพ์เพื่อเพิ่มเอง</div>';
   hosList.classList.remove('hidden');
 }
@@ -1184,16 +1184,14 @@ function renderPP(q){
   var f;
   if(!q){ f=own.slice(0,60); }
   else{
-    var a=own.filter(function(h){return h.indexOf(q)>-1;});
-    var b=ALL_HOSP.filter(function(h){return h.indexOf(q)>-1 && own.indexOf(h)<0;});
-    f=a.concat(b).slice(0,80);
+    f=own.filter(function(h){return h.indexOf(q)>-1;}).slice(0,80);   // เขตอื่นไม่ขึ้น ให้พิมพ์เอง
   }
   var html='';
   f.forEach(function(h){
     var badge = isOwnHos(h) ? '' : ' <span style="font-size:10px;color:#B45309;background:#FEF3C7;padding:1px 7px;border-radius:20px;margin-left:4px">เขตอื่น</span>';
     html+='<div onclick="addPlanHos(\''+h.replace(/'/g,"\\'")+'\')" style="padding:11px 8px;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer">'+h+badge+'</div>';
   });
-  if(q && ALL_HOSP.indexOf(q)<0) html+='<div style="padding:11px 8px" class="addnew" onclick="addPlanHos(\''+q.replace(/'/g,"\\'")+'\')">+ ใช้ "'+q+'" (พิมพ์เอง)</div>';
+  if(q && own.indexOf(q)<0) html+='<div style="padding:11px 8px" class="addnew" onclick="addPlanHos(\''+q.replace(/'/g,"\\'")+'\')">+ ใช้ "'+q+'" (พิมพ์เอง)</div>';
   document.getElementById('ppList').innerHTML=html||'<div style="padding:14px;color:#9aa0a8">ไม่พบ</div>';
 }
 function addPlanHos(h){
