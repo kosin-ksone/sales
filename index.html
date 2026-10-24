@@ -74,6 +74,9 @@
   .pday .ph-d .holtag{font-size:10px;background:var(--danger-bg);color:var(--danger);padding:1px 7px;border-radius:20px}
   .phos-chip{display:inline-flex;align-items:center;gap:5px;background:var(--brand-tint);color:var(--brand);border-radius:20px;padding:4px 10px;font-size:12.5px;margin:3px 4px 0 0}
   .phos-chip b{cursor:pointer;font-weight:700;color:var(--red)}
+  .pslot{display:flex;gap:8px;align-items:flex-start;margin-top:6px}.pslot span{width:32px;font-size:12px;color:var(--mut);padding-top:9px}
+  .pslot textarea{flex:1;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit;font-size:13.5px;resize:none;overflow:hidden;min-height:38px;background:#fff}
+  .phos{width:100%;margin-top:7px;border:1.5px dashed var(--gold);background:var(--gold-tint);border-radius:9px;padding:8px 10px;font:inherit;font-size:12.5px;box-sizing:border-box}
   .padd{border:1.5px dashed var(--gold);color:var(--brand);background:var(--gold-tint);border-radius:9px;padding:7px;font-size:12.5px;cursor:pointer;font-family:inherit;margin-top:6px;width:100%;font-weight:600}
   .zonerow{display:flex;gap:8px;margin-bottom:12px}
   .zonechip{flex:1;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;padding:8px 10px;font-size:11px;color:var(--mut)}
@@ -1147,13 +1150,32 @@ function autoSavePlan(ws){   // เซฟอัตโนมัติ
   if(CFG.SUBMIT_URL){ fetch(CFG.SUBMIT_URL,{method:'POST',body:JSON.stringify({action:'plan',nick:me.nick,name:me.full,email:me.email,region:me.region,weekStart:ws,plan:myPlan(ws)}),headers:{'Content-Type':'text/plain;charset=utf-8'}}).catch(function(){}); }
 }
 function renderPlan(){ if(planView==='month') renderPlanMonth(); else renderPlanWeek(); }
+/* ===== โหลดแพลน (จ–อา) — เซลกดเองแล้วส่งเมลปลายทางเอง ===== */
+function slotsOf(v){ if(!v) return {}; if(Array.isArray(v)) return v.length?{'เช้า':v.join(', ')}:{}; return v; }
+function planOfDay(k){ var a=(loadPlans()[me.nick])||{}; return slotsOf((a[sundayStart(k)]||{})[k]); }
+function printPlan(sun){   // ฟอร์มแพลนเดิม (xlsx): อาทิตย์–เสาร์ แนวนอน · เช้า/บ่าย · วันหยุดเหลือง
+  var cellsOf=function(k){var p=planOfDay(k);return [esc(p['เช้า']||'').replace(/\n/g,'<br>'),esc(p['บ่าย']||'').replace(/\n/g,'<br>')];};
+  var dows=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'],mm=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var r1='<tr><th></th>',r2='<tr><th></th>',r3='<tr><td class="nm">'+esc(me.full)+'</td>',rm='<tr class="sl"><td>เช้า</td>',ra='<tr class="sl"><td>บ่าย</td>';
+  for(var i=0;i<7;i++){var k=addDays(sun,i),dd=new Date(k+'T00:00:00'),c=cellsOf(k),off=function(k){return isHoliday(k).off;}(k);
+    r1+='<th>'+dows[i]+'</th>';r2+='<th>'+dd.getDate()+'-'+mm[dd.getMonth()]+'-'+String(dd.getFullYear()%100).padStart(2,'0')+'</th>';r3+='<td></td>';
+    rm+=c[0]?'<td>'+c[0]+'</td>':(off?'<td class="off">หยุด</td>':'<td></td>');
+    ra+=c[1]?'<td>'+c[1]+'</td>':(off?'<td class="off">หยุด</td>':'<td></td>');}
+  var w=window.open('','_blank');
+  if(!w){toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต pop-up ก่อนนะคะ');return;}
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>แพลนงาน '+esc(me.full)+'</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Tahoma,"Leelawadee UI",Sarabun,sans-serif;font-size:13px;color:#000;margin:0}table.pl{border-collapse:collapse;width:100%;table-layout:fixed}.pl th,.pl td{border:1px solid #000;padding:6px 4px;text-align:center;vertical-align:middle;word-wrap:break-word;font-weight:400}.pl thead th{border-color:#bbb}.pl td.nm{background:#E7E6E6;text-align:left;padding-left:8px}.pl tr.sl td{height:110px}.pl td.off{background:#FFFF00}.bar{position:sticky;top:0;padding:8px;display:flex;gap:8px}.bar button{flex:1;padding:10px;border-radius:8px;font-weight:700;font-size:14px}@media print{.bar{display:none}}</style></head><body>'
+    +'<div class="bar" style="background:#0B1F4D"><button onclick="window.print()" style="background:#C4271C;color:#fff;border:1px solid #C9A24A">⬇ บันทึกเป็น PDF / พิมพ์</button><button onclick="window.close()">ปิด</button></div>'
+    +'<div style="padding:10px"><table class="pl"><thead>'+r1+'</tr>'+r2+'</tr></thead><tbody>'+r3+'</tr>'+rm+'</tr>'+ra+'</tr></tbody></table></div></body></html>');
+  w.document.close();setTimeout(function(){try{w.focus();w.print();}catch(e){}},600);
+}
+function planDlButtons(mon1,mon2,l1,l2){ return '<div class="btnrow"><button class="send ghost" onclick="printPlan(\''+mon1+'\')">'+IC.dl+l1+'</button>'+(mon2?'<button class="send ghost" onclick="printPlan(\''+mon2+'\')">'+IC.dl+l2+'</button>':'')+'</div>'; }
 function renderPlanMonth(){
   if(!planMonth){var d=new Date();planMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';}
   var first=new Date(planMonth+'T00:00:00'), y=first.getFullYear(), mo=first.getMonth();
   var MN=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   var mine=(loadPlans()[me.nick])||{}, byDate={};
-  Object.keys(mine).forEach(function(ws){var wk=mine[ws];Object.keys(wk).forEach(function(dk){if(wk[dk]&&wk[dk].length)byDate[dk]=wk[dk].length;});});
-  var h='<div class="plan-remind">📅 แตะวันที่เพื่อเพิ่ม รพ. ที่จะไป · <b>ส่งแพลนก่อนอาทิตย์เที่ยงคืน</b> · เซฟอัตโนมัติ</div>';
+  Object.keys(mine).forEach(function(ws){var wk=mine[ws];Object.keys(wk).forEach(function(dk){var o=slotsOf(wk[dk]),n=(o['เช้า']?1:0)+(o['บ่าย']?1:0);if(n)byDate[dk]=n;});});
+  var h='<div class="plan-remind">📅 แตะวันที่เพื่อเขียนแพลน · เซฟอัตโนมัติ</div>';
   h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><button class="wkbtn" data-mnav="-1">◄</button><div style="flex:1;text-align:center;font-size:15px;font-weight:600">'+MN[mo]+' '+(y+543)+'</div><button class="wkbtn" data-mnav="1">►</button></div>';
   h+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;font-size:10px;color:var(--mut);margin-bottom:3px">'+['อา','จ','อ','พ','พฤ','ศ','ส'].map(function(d){return '<div>'+d+'</div>';}).join('')+'</div>';
   h+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">';
@@ -1166,6 +1188,7 @@ function renderPlanMonth(){
     h+='<div class="mcell" data-dk="'+dk+'" style="cursor:pointer;border:'+(dk===tk?'1.5px solid var(--brand)':'0.5px solid var(--line)')+';border-radius:8px;min-height:46px;padding:3px;'+bg+'"><div style="font-size:11px;font-weight:600;'+(di.off?'color:var(--danger)':'')+'">'+dn+'</div>'+(c?'<div style="font-size:9px;color:var(--brand);margin-top:2px">📍'+c+'</div>':'')+'</div>';
   }
   h+='</div><div style="font-size:10.5px;color:var(--mut);margin-top:10px;text-align:center">แตะวันเพื่อดู/แก้แพลน · 🔵 มีแพลน · 🔴 วันหยุด</div>';
+  var tw=sundayStart(); h+=planDlButtons(tw,addDays(tw,7),'โหลดแพลนสัปดาห์นี้','โหลดแพลนสัปดาห์หน้า');
   document.getElementById('planBody').innerHTML=h;
   [].forEach.call(document.querySelectorAll('#planBody [data-mnav]'),function(b){b.onclick=function(){var d=new Date(planMonth+'T00:00:00');d.setMonth(d.getMonth()+parseInt(b.dataset.mnav));planMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';renderPlan();};});
   [].forEach.call(document.querySelectorAll('#planBody .mcell'),function(el){el.onclick=function(){planSunday=sundayStart(el.dataset.dk);planView='week';renderPlan();};});
@@ -1177,15 +1200,22 @@ function renderPlanWeek(){
   var fmt=function(d){var m=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return d.getDate()+' '+m[d.getMonth()];};
   var h='<button class="wkbtn" style="width:auto;padding:8px 12px;margin-bottom:8px" id="backCal">‹ กลับปฏิทินเดือน</button>';
   h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><button class="wkbtn" data-wnav="-1">◄</button><div style="flex:1;text-align:center"><div style="font-size:14px;font-weight:600">'+fmt(wsD)+' – '+fmt(wEnd)+'</div><div style="font-size:11px;color:var(--mut)">'+(ws===thisWs?'สัปดาห์นี้':(ws>thisWs?'สัปดาห์หน้า':'ผ่านมาแล้ว'))+'</div></div><button class="wkbtn" data-wnav="1">►</button></div>';
-  h+='<div class="plan-remind">⏰ ส่งแพลนก่อนวันอาทิตย์เที่ยงคืน · แก้ได้ตลอด · เซฟอัตโนมัติ</div>';
+  h+='<div class="plan-remind">✍️ พิมพ์แพลนเองได้เลย · ชื่อ รพ. ในเขตจะขึ้นให้เลือก · เซฟอัตโนมัติ</div>';
+  h+='<datalist id="plHosList">'+(HOSP[me.nick]||[]).map(function(x){return '<option value="'+esc(x)+'">';}).join('')+'</datalist>';
   for(var i=0;i<7;i++){
-    var dd=new Date(wsD); dd.setDate(dd.getDate()+i); var k=dkey(dd), di=isHoliday(k), list=plan[k]||[];
+    var dd=new Date(wsD); dd.setDate(dd.getDate()+i); var k=dkey(dd), di=isHoliday(k);
     h+='<div class="pday'+(di.off?' hol':'')+'"><div class="ph-d"><span class="wd">'+THAI_DOW[i]+' '+dd.getDate()+'</span>'+(di.off?'<span class="holtag">'+(di.why||'วันหยุด')+'</span>':'')+'</div>';
-    list.forEach(function(hs,idx){ h+='<span class="phos-chip">'+hs+' <b onclick="rmPlanHos(\''+k+'\','+idx+')">×</b></span>'; });
-    h+='<button class="padd" onclick="openPicker(\''+k+'\')">+ เพิ่ม รพ.</button></div>';
+    var o=slotsOf(plan[k]);
+    ['เช้า','บ่าย'].forEach(function(sl){ h+='<div class="pslot"><span>'+sl+'</span><textarea rows="1" data-pk="'+k+'" data-sl="'+sl+'" placeholder="'+(di.off?'หยุด':'พิมพ์แพลน / ชื่อ รพ.')+'">'+esc(o[sl]||'')+'</textarea></div>'; });
+    h+='<input class="phos" list="plHosList" data-pk="'+k+'" placeholder="🔎 ค้นชื่อ รพ. ในเขต แล้วเลือก → ใส่ให้ช่องเช้า (ว่างค่อยบ่าย)"></div>';
   }
+  h+=planDlButtons(ws,null,'โหลดแพลนสัปดาห์นี้ (อา '+fmt(wsD)+' – ส '+fmt(wEnd)+')');
   document.getElementById('planBody').innerHTML=h;
   document.getElementById('backCal').onclick=function(){planView='month';renderPlan();};
+  [].forEach.call(document.querySelectorAll('#planBody textarea[data-pk]'),function(t){ var fit=function(){t.style.height='auto';t.style.height=t.scrollHeight+'px';}; fit(); t.oninput=fit; t.onchange=function(){ setPlanSlot(ws,t.dataset.pk,t.dataset.sl,t.value.trim()); }; });
+  [].forEach.call(document.querySelectorAll('#planBody input.phos'),function(inp){ inp.onchange=function(){ var v=inp.value.trim(); if(!v) return;
+    var ta=document.querySelector('#planBody textarea[data-pk="'+inp.dataset.pk+'"][data-sl="เช้า"]'); if(ta.value.trim()) ta=document.querySelector('#planBody textarea[data-pk="'+inp.dataset.pk+'"][data-sl="บ่าย"]');
+    ta.value=ta.value.trim()?ta.value.trim()+'\n'+v:v; ta.onchange(); ta.oninput(); inp.value=''; }; });
   [].forEach.call(document.querySelectorAll('#planBody [data-wnav]'),function(b){b.onclick=function(){var d=new Date(ws+'T00:00:00');d.setDate(d.getDate()+7*parseInt(b.dataset.wnav));planSunday=dkey(d);renderPlan();};});
 }
 function openPicker(k){
@@ -1216,6 +1246,12 @@ function addPlanHos(h){
   a[me.nick][ws]=a[me.nick][ws]||{}; a[me.nick][ws][ppDateKey]=a[me.nick][ws][ppDateKey]||[];
   if(a[me.nick][ws][ppDateKey].indexOf(h)<0) a[me.nick][ws][ppDateKey].push(h);
   savePlans(a); autoSavePlan(ws); closePicker(); renderPlan(); toast('บันทึกแล้ว');
+}
+function setPlanSlot(ws,k,sl,v){
+  var a=loadPlans(); a[me.nick]=a[me.nick]||{}; a[me.nick][ws]=a[me.nick][ws]||{};
+  var o=slotsOf(a[me.nick][ws][k]); o=Object.assign({},o); if(v) o[sl]=v; else delete o[sl];
+  if(o['เช้า']||o['บ่าย']) a[me.nick][ws][k]=o; else delete a[me.nick][ws][k];
+  savePlans(a); autoSavePlan(ws); toast('บันทึกแล้ว');
 }
 function rmPlanHos(k,idx){
   var a=loadPlans(), ws=planSunday;
