@@ -146,7 +146,7 @@
   .dayc.off{border-left-color:var(--line2);background:#faf8f4}
   .dayc .dh{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:var(--brand)}
   .dayc .dh small{font-weight:400;color:var(--mut);font-size:11px}
-  .dayc .rw{margin-top:5px;font-size:12.5px;line-height:1.45}
+  .dayc .rw{margin-top:5px;font-size:12.5px;line-height:1.45;white-space:pre-line}
   .dayc .rw .k{display:inline-block;min-width:78px;color:var(--gold-dk);font-size:11px;font-weight:700}
   .dayc .rw .prob{color:var(--danger)}
   .dayc .sep{border-top:1px dashed var(--line);margin:8px 0 2px}
@@ -998,6 +998,9 @@ function weekNo(ws){ // สัปดาห์ที่ N ของเดือ�
 function ordTh(n){ return n+(n===1?'st':n===2?'nd':n===3?'rd':'th'); }
 function fmtShort(k){ var d=new Date(k+'T00:00:00'); return d.getDate()+' '+MN_SHORT[d.getMonth()]; }
 // รวมรายงานของวันเป็น 1 แถวแบบฟอร์มเดิม
+function byHos(list){ var g={},o=[]; list.forEach(function(r){ var k=(r.hospital||'-').trim(); if(!g[k]){g[k]=[];o.push(k);} g[k].push(r); }); return o.map(function(k){return g[k];}); }
+function openGrpViewer(k,gi,i){ var list=myReports().filter(function(r){return r.workDate===k;}), grp=byHos(list)[gi]||[], all=[]; grp.forEach(function(r){ (r.thumbs||[]).forEach(function(t){ if(t) all.push(t); }); });
+  var d=new Date(k+'T00:00:00'); openViewer(all,i,DOW_MON[(d.getDay()+6)%7]+' '+d.getDate()+' '+MN_SHORT[d.getMonth()]+' · '+(grp[0]?grp[0].hospital:'')); }
 function dayRow(list){
   var where=[],what=[],detail=[],prob=[],thumbs=[],count=0;
   list.forEach(function(r){
@@ -1035,20 +1038,20 @@ function renderMine(){
     var k=addDays(ws,i), list=inWeek.filter(function(r){return r.workDate===k;}), di=isHoliday(k), dd=new Date(k+'T00:00:00');
     var head='<div class="dh"><span>'+DOW_MON[i]+' '+dd.getDate()+' '+MN_SHORT[dd.getMonth()]+'</span><small>'+(list.length?('📷 '+dayRow(list).count):(di.off?(di.why||'วันหยุด'):'-'))+'</small></div>';
     if(!list.length){ h+='<div class="dayc off">'+head+'<div class="rw" style="color:var(--mut2)">'+(di.off?'หยุด':'ไม่มีรายงาน')+'</div></div>'; continue; }
-    var row=dayRow(list), body='';
-    list.forEach(function(r,j){
-      var one=dayRow([r]);
-      if(j) body+='<div class="sep"></div>';
-      body+='<div class="rw"><span class="k">ไปที่ไหน</span>'+esc(one.where.join(', '))+'</div>'
-        +'<div class="rw"><span class="k">ทำอะไร</span>'+esc(one.what.join(' / ')||'-')+'</div>'
-        +(one.detail.join('')?'<div class="rw"><span class="k">รายละเอียด</span>'+esc(one.detail.join(' / '))+'</div>':'')
-        +(one.prob.length?'<div class="rw prob"><span class="k">ปัญหา/แก้ไข</span>'+esc(one.prob.join(' / '))+'</div>':'');
+    var body='';
+    byHos(list).forEach(function(grp,gi){
+      var one=dayRow(grp);
+      if(gi) body+='<div class="sep"></div>';
+      body+='<div class="rw"><span class="k">ไปที่ไหน</span><b>'+esc(one.where[0]||'-')+'</b></div>'
+        +'<div class="rw"><span class="k">ทำอะไร</span>'+esc(one.what.filter(Boolean).join('\n')||'-')+'</div>'
+        +(one.detail.join('')?'<div class="rw"><span class="k">รายละเอียด</span>'+esc(one.detail.filter(Boolean).join('\n'))+'</div>':'')
+        +(one.prob.length?'<div class="rw prob"><span class="k">ปัญหา/แก้ไข</span>'+esc(one.prob.join('\n'))+'</div>':'');
+      if(one.thumbs.length){
+        body+='<div class="thumbs">';
+        one.thumbs.slice(0,4).forEach(function(t,ti){ body+='<div class="tw"><img src="'+t+'" onclick="openGrpViewer(\''+k+'\','+gi+','+ti+')">'+(ti===3&&one.thumbs.length>4?'<div class="more">+'+(one.thumbs.length-4)+'</div>':'')+'</div>'; });
+        body+='</div>';
+      } else if(one.count){ body+='<div class="rw" style="color:var(--mut);font-size:11px;margin-top:6px">📷 '+one.count+' รูป</div>'; }
     });
-    if(row.thumbs.length){
-      body+='<div class="thumbs">';
-      row.thumbs.slice(0,4).forEach(function(t,ti){ body+='<div class="tw"><img src="'+t+'" onclick="openDayViewer(\''+k+'\','+ti+')">'+(ti===3&&row.thumbs.length>4?'<div class="more">+'+(row.thumbs.length-4)+'</div>':'')+'</div>'; });
-      body+='</div>';
-    } else if(row.count){ body+='<div class="rw" style="color:var(--mut);font-size:11px;margin-top:6px">📷 '+row.count+' รูป (รูปย่อเก็บในเครื่อง '+KEEP_THUMB_DAYS+' วัน)</div>'; }
     h+='<div class="dayc">'+head+body+'</div>';
   }
   h+='<div class="btnrow"><button class="send ghost" onclick="printWeeks([mineWeek],\'week\')">'+IC.dl+'โหลดสัปดาห์</button><button class="send ghost" onclick="printMonth()">'+IC.dl+'โหลดทั้งเดือน</button></div>';
@@ -1095,9 +1098,12 @@ function printWeeks(weeks,mode,mo,yr){
       var dcell='วัน'+DOW_MON[i]+'ที่<br>'+dd.getDate()+' '+MN_FULL[dd.getMonth()];
       if(mode==='month' && dd.getMonth()!==mm){ rows+='<tr class="out"><td>'+dcell+'</td><td colspan="5"></td></tr>'; continue; }
       if(!list.length){ rows+='<tr><td>'+dcell+'</td><td>'+(isHoliday(k).off?'หยุด':'-')+'</td><td></td><td></td><td></td><td></td></tr>'; continue; }
-      var r=dayRow(list);
-      var im=r.thumbs.slice(0,6).map(function(t){return '<img src="'+t+'">';}).join('')+(r.count>Math.min(6,r.thumbs.length)?'<div class="more">รวม '+r.count+' รูป</div>':'');
-      rows+='<tr><td>'+dcell+'</td><td>'+esc(r.where.join('\n'))+'</td><td>'+esc(r.what.join('\n'))+'</td><td>'+esc(r.detail.join('\n'))+'</td><td>'+esc(r.prob.join('\n')||'-')+'</td><td class="pics">'+(im||'-')+'</td></tr>';
+      var grps=byHos(list);
+      grps.forEach(function(grp,gi){
+        var r=dayRow(grp);
+        var im=r.thumbs.slice(0,6).map(function(t){return '<img src="'+t+'">';}).join('')+(r.count>Math.min(6,r.thumbs.length)?'<div class="more">รวม '+r.count+' รูป</div>':'');
+        rows+='<tr>'+(gi?'':'<td rowspan="'+grps.length+'">'+dcell+'</td>')+'<td><b>'+esc(r.where[0]||'-')+'</b></td><td>'+esc(r.what.filter(Boolean).join('\n'))+'</td><td>'+esc(r.detail.filter(Boolean).join('\n')||'-')+'</td><td>'+esc(r.prob.join('\n')||'-')+'</td><td class="pics">'+(im||'-')+'</td></tr>';
+      });
     }
     pages+='<section class="pg"><div class="h">รายงานการทำงานสัปดาห์ที่ <u>&nbsp;&nbsp;'+ordTh(mode==='month'?wi+1:weekNo(ws))+'&nbsp;&nbsp;</u> เดือน <u>&nbsp;&nbsp;'+MN_FULL[mm]+' '+(yy+543)+'&nbsp;&nbsp;</u> ชื่อผู้ปฏิบัติงาน <u>&nbsp;&nbsp;'+esc(me.full)+'&nbsp;&nbsp;</u></div>'
       +'<table><thead><tr><th style="width:11%">ประจำวัน</th><th style="width:15%">ไปที่ไหน</th><th style="width:17%">ทำอะไร</th><th style="width:22%">รายละเอียด</th><th style="width:15%">ปัญหาและแนวทางแก้ไข</th><th style="width:20%">ภาพประกอบ</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
