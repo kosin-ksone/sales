@@ -329,7 +329,8 @@
 var CFG = window.APP_CONFIG || {};
 var SALES = window.SALES || [];
 var HOSP = window.HOSP_BY_SALES || {};
-if(window.ZONE_SALES) HOSP = window.ZONE_SALES;   // เขตการทำงาน rev122 — ขึ้นเฉพาะ รพ. ในเขตตัวเอง (เขตอื่นพิมพ์เอง)
+if(window.ZONE_SALES) HOSP = window.ZONE_SALES;
+(function(){ var th=new Intl.Collator('th'); Object.keys(HOSP).forEach(function(k){ HOSP[k]=(HOSP[k]||[]).slice().sort(th.compare); }); })();   // เรียง รพ. ตามตัวอักษร   // เขตการทำงาน rev122 — ขึ้นเฉพาะ รพ. ในเขตตัวเอง (เขตอื่นพิมพ์เอง)
 var ALL_HOSP = [];
 function rebuildAllHosp(){ var s={}; Object.keys(HOSP).forEach(function(k){ (HOSP[k]||[]).forEach(function(h){ s[h]=1; }); }); ALL_HOSP=Object.keys(s).sort(); }
 rebuildAllHosp();
