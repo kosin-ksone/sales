@@ -448,18 +448,25 @@ fHos.addEventListener('focus',function(){showHos(fHos.value);});
 fHos.addEventListener('input',function(){showHos(fHos.value);});
 document.addEventListener('click',function(e){ if(!e.target.closest('.hos-search')) hosList.classList.add('hidden'); });
 function isOwnHos(h){ return (HOSP[me.nick]||[]).indexOf(h)>-1; }
+// รายชื่อ รพ. ที่ช่วยแนะนำ: มีเขต = เฉพาะเขตตัวเอง · ยังไม่มีเขต (เช่น น้องทดลองงาน) = ทุก รพ.
+function myHosp(){ var own=HOSP[me.nick]||[]; return own.length?own:ALL_HOSP.slice().sort(new Intl.Collator('th').compare); }
+// จับคร่าวๆ: ไม่สน "โรงพยาบาล/รพ." ช่องว่าง จุด วงเล็บ
+function hn(x){ return String(x||'').replace(/โรงพยาบาล|ร\.?พ\.?|คลีนิก|คลินิก|คลีนิค|คลินิค|[\s.()\-]/g,''); }
+function hosMatch(list,q){ var n=hn(q); if(!n) return list.filter(function(h){return h.indexOf(q)>-1;});
+  var a=list.filter(function(h){return hn(h).indexOf(n)===0;}), b=list.filter(function(h){var k=hn(h);return k.indexOf(n)>0;});
+  return a.concat(b); }
 function showHos(q){
   if(!me){hosList.classList.add('hidden');return;}
-  var own=(HOSP[me.nick]||[]);
+  var own=myHosp();
   q=(q||'').trim();
   var list;
   if(!q){ list=own.slice(0,50); }
   else{
-    list=own.filter(function(h){return h.indexOf(q)>-1;}).slice(0,60);   // เขตอื่นไม่ขึ้น ให้พิมพ์เอง
+    list=hosMatch(own,q).slice(0,60);   // มีเขต: เขตอื่นไม่ขึ้น ให้พิมพ์เอง
   }
   var html='';
   list.forEach(function(h){
-    var badge = isOwnHos(h) ? '' : ' <span style="font-size:10px;color:#B45309;background:#FEF3C7;padding:1px 7px;border-radius:20px;margin-left:4px">เขตอื่น</span>';
+    var badge='';
     html+='<div onclick="pickHos(\''+h.replace(/'/g,"\\'")+'\')">'+h+badge+'</div>';
   });
   if(q && own.indexOf(q)<0) html+='<div class="addnew" onclick="pickHos(\''+q.replace(/'/g,"\\'")+'\')">+ ใช้ "'+q+'" (พิมพ์เอง)</div>';
@@ -1168,7 +1175,63 @@ function printPlan(sun){   // ฟอร์มแพลนเดิม (xlsx): �
     +'<div style="padding:10px"><table class="pl"><thead>'+r1+'</tr>'+r2+'</tr></thead><tbody>'+r3+'</tr>'+rm+'</tr>'+ra+'</tr></tbody></table></div></body></html>');
   w.document.close();setTimeout(function(){try{w.focus();w.print();}catch(e){}},600);
 }
-function planDlButtons(mon1,mon2,l1,l2){ return '<div class="btnrow"><button class="send ghost" onclick="printPlan(\''+mon1+'\')">'+IC.dl+l1+'</button>'+(mon2?'<button class="send ghost" onclick="printPlan(\''+mon2+'\')">'+IC.dl+l2+'</button>':'')+'</div>'; }
+/* ===== โหลดแพลนเป็น Excel (.xlsx) ฟอร์มเดิม — เขียนไฟล์เองในเครื่อง ไม่ต้องใช้เน็ต ===== */
+function planCols(sun,cellsOf,isOff){
+  var dows=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'],mm=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],out=[];
+  for(var i=0;i<7;i++){var k=addDays(sun,i),dd=new Date(k+'T00:00:00'),c=cellsOf(k);
+    out.push({dow:dows[i],date:dd.getDate()+'-'+mm[dd.getMonth()]+'-'+String(dd.getFullYear()%100).padStart(2,'0'),m:c[0]||'',a:c[1]||'',off:isOff(k)});}
+  return out;
+}
+function xlsxPlan(name,cols,fname){
+  var x=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
+  var L='ABCDEFGH',cell=function(r,c,v,st){return '<c r="'+L[c]+r+'" s="'+st+'"'+(v===''?'/>':' t="inlineStr"><is><t xml:space="preserve">'+x(v)+'</t></is></c>');};
+  var row=function(r,ht,cells){return '<row r="'+r+'"'+(ht?' ht="'+ht+'" customHeight="1"':'')+'>'+cells.join('')+'</row>';};
+  var r1=[cell(1,0,'',0)],r2=[cell(2,0,'',0)],r3=[cell(3,0,name,4)],r4=[cell(4,0,'เช้า',2)],r5=[cell(5,0,'บ่าย',2)];
+  cols.forEach(function(o,i){var c=i+1;r1.push(cell(1,c,o.dow,1));r2.push(cell(2,c,o.date,1));r3.push(cell(3,c,'',0));
+    r4.push(o.m?cell(4,c,o.m,2):(o.off?cell(4,c,'หยุด',3):cell(4,c,'',2)));
+    r5.push(o.a?cell(5,c,o.a,2):(o.off?cell(5,c,'หยุด',3):cell(5,c,'',2)));});
+  var sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    +'<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="8" width="22" customWidth="1"/></cols><sheetData>'
+    +row(1,0,r1)+row(2,0,r2)+row(3,0,r3)+row(4,90,r4)+row(5,90,r5)+'</sheetData>'
+    +'<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="1"/></worksheet>';
+  var styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    +'<fonts count="1"><font><sz val="12"/><name val="Tahoma"/></font></fonts>'
+    +'<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE7E6E6"/></patternFill></fill></fills>'
+    +'<borders count="2"><border/><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/><diagonal/></border></borders>'
+    +'<cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="5"><xf/>'
+    +'<xf applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+    +'<xf borderId="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+    +'<xf fillId="2" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+    +'<xf fillId="3" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  var files=[
+    ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="แพลน" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ['xl/worksheets/sheet1.xml',sheet],['xl/styles.xml',styles]];
+  var blob=zipStore(files);
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000);
+}
+function zipStore(files){   // zip แบบไม่บีบอัด (พอสำหรับ xlsx เล็กๆ)
+  var enc=new TextEncoder(),T=zipStore.t;
+  if(!T){T=zipStore.t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c>>>0;}}
+  var crc=function(b){var c=0xFFFFFFFF;for(var i=0;i<b.length;i++)c=T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;};
+  var parts=[],cen=[],off=0;
+  var u16=function(v){return [v&255,(v>>8)&255];},u32=function(v){return [v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];};
+  files.forEach(function(f){var nm=enc.encode(f[0]),d=enc.encode(f[1]),c=crc(d);
+    var hd=[].concat(u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(c),u32(d.length),u32(d.length),u16(nm.length),u16(0));
+    parts.push(new Uint8Array(hd),nm,d);
+    cen.push(new Uint8Array([].concat(u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(c),u32(d.length),u32(d.length),u16(nm.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off))),nm);
+    off+=hd.length+nm.length+d.length;});
+  var cs=cen.reduce(function(s,b){return s+b.length;},0);
+  var end=new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(cs),u32(off),u16(0)));
+  return new Blob(parts.concat(cen,[end]),{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function planXlsx(sun){ xlsxPlan(me.full, planCols(sun,function(k){var p=planOfDay(k);return [p['เช้า']||'',p['บ่าย']||''];},function(k){return isHoliday(k).off;}), 'แพลน '+me.full+' '+sun+'.xlsx'); }
+function planDlButtons(mon1,mon2,l1,l2){ var b=function(fn,k,t){return '<button class="send ghost" onclick="'+fn+'(\''+k+'\')">'+t+'</button>';};
+  return '<div class="btnrow">'+b('printPlan',mon1,IC.dl+'PDF · '+l1)+(mon2?b('printPlan',mon2,IC.dl+'PDF · '+l2):'')+'</div>'
+    +'<div class="btnrow">'+b('planXlsx',mon1,'📊 Excel · '+l1)+(mon2?b('planXlsx',mon2,'📊 Excel · '+l2):'')+'</div>'; }
 function renderPlanMonth(){
   if(!planMonth){var d=new Date();planMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';}
   var first=new Date(planMonth+'T00:00:00'), y=first.getFullYear(), mo=first.getMonth();
@@ -1188,7 +1251,7 @@ function renderPlanMonth(){
     h+='<div class="mcell" data-dk="'+dk+'" style="cursor:pointer;border:'+(dk===tk?'1.5px solid var(--brand)':'0.5px solid var(--line)')+';border-radius:8px;min-height:46px;padding:3px;'+bg+'"><div style="font-size:11px;font-weight:600;'+(di.off?'color:var(--danger)':'')+'">'+dn+'</div>'+(c?'<div style="font-size:9px;color:var(--brand);margin-top:2px">📍'+c+'</div>':'')+'</div>';
   }
   h+='</div><div style="font-size:10.5px;color:var(--mut);margin-top:10px;text-align:center">แตะวันเพื่อดู/แก้แพลน · 🔵 มีแพลน · 🔴 วันหยุด</div>';
-  var tw=sundayStart(); h+=planDlButtons(tw,addDays(tw,7),'โหลดแพลนสัปดาห์นี้','โหลดแพลนสัปดาห์หน้า');
+  var tw=sundayStart(); h+=planDlButtons(tw,addDays(tw,7),'แพลนสัปดาห์นี้','แพลนสัปดาห์หน้า');
   document.getElementById('planBody').innerHTML=h;
   [].forEach.call(document.querySelectorAll('#planBody [data-mnav]'),function(b){b.onclick=function(){var d=new Date(planMonth+'T00:00:00');d.setMonth(d.getMonth()+parseInt(b.dataset.mnav));planMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';renderPlan();};});
   [].forEach.call(document.querySelectorAll('#planBody .mcell'),function(el){el.onclick=function(){planSunday=sundayStart(el.dataset.dk);planView='week';renderPlan();};});
@@ -1201,7 +1264,7 @@ function renderPlanWeek(){
   var h='<button class="wkbtn" style="width:auto;padding:8px 12px;margin-bottom:8px" id="backCal">‹ กลับปฏิทินเดือน</button>';
   h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><button class="wkbtn" data-wnav="-1">◄</button><div style="flex:1;text-align:center"><div style="font-size:14px;font-weight:600">'+fmt(wsD)+' – '+fmt(wEnd)+'</div><div style="font-size:11px;color:var(--mut)">'+(ws===thisWs?'สัปดาห์นี้':(ws>thisWs?'สัปดาห์หน้า':'ผ่านมาแล้ว'))+'</div></div><button class="wkbtn" data-wnav="1">►</button></div>';
   h+='<div class="plan-remind">✍️ พิมพ์แพลนเองได้เลย · ชื่อ รพ. ในเขตจะขึ้นให้เลือก · เซฟอัตโนมัติ</div>';
-  h+='<datalist id="plHosList">'+(HOSP[me.nick]||[]).map(function(x){return '<option value="'+esc(x)+'">';}).join('')+'</datalist>';
+  h+='<datalist id="plHosList">'+myHosp().map(function(x){return '<option value="'+esc(x)+'">';}).join('')+'</datalist>';
   for(var i=0;i<7;i++){
     var dd=new Date(wsD); dd.setDate(dd.getDate()+i); var k=dkey(dd), di=isHoliday(k);
     h+='<div class="pday'+(di.off?' hol':'')+'"><div class="ph-d"><span class="wd">'+THAI_DOW[i]+' '+dd.getDate()+'</span>'+(di.off?'<span class="holtag">'+(di.why||'วันหยุด')+'</span>':'')+'</div>';
@@ -1209,7 +1272,7 @@ function renderPlanWeek(){
     ['เช้า','บ่าย'].forEach(function(sl){ h+='<div class="pslot"><span>'+sl+'</span><textarea rows="1" data-pk="'+k+'" data-sl="'+sl+'" placeholder="'+(di.off?'หยุด':'พิมพ์แพลน / ชื่อ รพ.')+'">'+esc(o[sl]||'')+'</textarea></div>'; });
     h+='<input class="phos" list="plHosList" data-pk="'+k+'" placeholder="🔎 ค้นชื่อ รพ. ในเขต แล้วเลือก → ใส่ให้ช่องเช้า (ว่างค่อยบ่าย)"></div>';
   }
-  h+=planDlButtons(ws,null,'โหลดแพลนสัปดาห์นี้ (อา '+fmt(wsD)+' – ส '+fmt(wEnd)+')');
+  h+=planDlButtons(ws,null,'แพลน อา '+fmt(wsD)+' – ส '+fmt(wEnd));
   document.getElementById('planBody').innerHTML=h;
   document.getElementById('backCal').onclick=function(){planView='month';renderPlan();};
   [].forEach.call(document.querySelectorAll('#planBody textarea[data-pk]'),function(t){ var fit=function(){t.style.height='auto';t.style.height=t.scrollHeight+'px';}; fit(); t.oninput=fit; t.onchange=function(){ setPlanSlot(ws,t.dataset.pk,t.dataset.sl,t.value.trim()); }; });
@@ -1227,11 +1290,11 @@ function openPicker(k){
 function closePicker(){ document.getElementById('planPicker').classList.add('hidden'); ppDateKey=null; }
 document.getElementById('ppSearch').addEventListener('input',function(){renderPP(this.value);});
 function renderPP(q){
-  var own=(HOSP[me.nick]||[]); q=(q||'').trim();
+  var own=myHosp(); q=(q||'').trim();
   var f;
   if(!q){ f=own.slice(0,60); }
   else{
-    f=own.filter(function(h){return h.indexOf(q)>-1;}).slice(0,80);   // เขตอื่นไม่ขึ้น ให้พิมพ์เอง
+    f=hosMatch(own,q).slice(0,80);
   }
   var html='';
   f.forEach(function(h){
