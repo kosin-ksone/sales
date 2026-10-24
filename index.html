@@ -146,6 +146,10 @@
   .dayc.off{border-left-color:var(--line2);background:#faf8f4}
   .dayc .dh{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:var(--brand)}
   .dayc .dh small{font-weight:400;color:var(--mut);font-size:11px}
+  .homebtn{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:44px;height:44px;border-radius:12px;background:var(--brand);color:#fff;text-decoration:none;font-size:22px;font-weight:700;line-height:1;margin-right:2px;border:1.5px solid var(--gold)}
+  .homebtn small{font-size:8.5px;font-weight:600;margin-top:1px}
+  .homebtn.hidden{display:none}
+  .dbtn{border:1px solid var(--gold);background:var(--gold-tint);color:var(--brand);border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;margin-left:6px}
   .dayc .rw{margin-top:5px;font-size:12.5px;line-height:1.45;white-space:pre-line}
   .dayc .rw .k{display:inline-block;min-width:78px;color:var(--gold-dk);font-size:11px;font-weight:700}
   .dayc .rw .prob{color:var(--danger)}
@@ -193,6 +197,7 @@
   <!-- ========== APP ========== -->
   <div id="app" class="hidden">
     <div class="top">
+      <a id="homeBtn" class="homebtn hidden" href="https://kosin-ksone.github.io/ksone/" target="_top" title="กลับเมนูหลัก KS-ONE">‹<small>เมนูหลัก</small></a>
       <img src="icon-192.png" class="appic" alt="">
       <div style="flex:1">
         <div class="brandname">KOSIN</div>
@@ -328,6 +333,8 @@
 <script>
 var CFG = window.APP_CONFIG || {};
 var SALES = window.SALES || [];
+// เปิดจากแอป KS-ONE (?from=ksone) → มีปุ่ม "‹ เมนูหลัก" กลับไป KS-ONE · เปิดตรงๆ ไม่มีปุ่มนี้
+(function(){ try{ if(new URLSearchParams(location.search).get('from')==='ksone') sessionStorage.setItem('fromKsone','1'); if(sessionStorage.getItem('fromKsone')) document.getElementById('homeBtn').classList.remove('hidden'); }catch(e){} })();
 var HOSP = window.HOSP_BY_SALES || {};
 if(window.ZONE_SALES) HOSP = window.ZONE_SALES;
 (function(){ var th=new Intl.Collator('th'); Object.keys(HOSP).forEach(function(k){ HOSP[k]=(HOSP[k]||[]).slice().sort(th.compare); }); })();   // เรียง รพ. ตามตัวอักษร   // เขตการทำงาน rev122 — ขึ้นเฉพาะ รพ. ในเขตตัวเอง (เขตอื่นพิมพ์เอง)
@@ -1036,7 +1043,7 @@ function renderMine(){
   if(sent) h+='<div class="sentbox">🔒 ส่งสัปดาห์นี้แล้ว '+new Date(sent).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' · ปิดสัปดาห์ (กำลังตรวจ)</div>';
   for(var i=0;i<7;i++){
     var k=addDays(ws,i), list=inWeek.filter(function(r){return r.workDate===k;}), di=isHoliday(k), dd=new Date(k+'T00:00:00');
-    var head='<div class="dh"><span>'+DOW_MON[i]+' '+dd.getDate()+' '+MN_SHORT[dd.getMonth()]+'</span><small>'+(list.length?('📷 '+dayRow(list).count):(di.off?(di.why||'วันหยุด'):'-'))+'</small></div>';
+    var head='<div class="dh"><span>'+DOW_MON[i]+' '+dd.getDate()+' '+MN_SHORT[dd.getMonth()]+'</span><small>'+(list.length?('📷 '+dayRow(list).count+' <button class="dbtn" onclick="printDay(\''+k+'\')">⬇ โหลดวันนี้</button>'):(di.off?(di.why||'วันหยุด'):'-'))+'</small></div>';
     if(!list.length){ h+='<div class="dayc off">'+head+'<div class="rw" style="color:var(--mut2)">'+(di.off?'หยุด':'ไม่มีรายงาน')+'</div></div>'; continue; }
     var body='';
     byHos(list).forEach(function(grp,gi){
@@ -1088,13 +1095,15 @@ function printMonth(){
   while(k<=dkey(last)){ weeks.push(k); k=addDays(k,7); }
   printWeeks(weeks,'month',m,y);
 }
-function printWeeks(weeks,mode,mo,yr){
+function printDay(k){ printWeeks([mondayStart(k)],'day',null,null,k); }
+function printWeeks(weeks,mode,mo,yr,onlyK){
   var mine=myReports(), pages='';
   weeks.forEach(function(ws,wi){
     var d0=new Date(ws+'T00:00:00'), mm=(mode==='month')?mo:d0.getMonth(), yy=(mode==='month')?yr:d0.getFullYear();
     var rows='';
     for(var i=0;i<7;i++){
       var k=addDays(ws,i), dd=new Date(k+'T00:00:00'), list=mine.filter(function(r){return r.workDate===k;});
+      if(mode==='day' && k!==onlyK) continue;
       var dcell='วัน'+DOW_MON[i]+'ที่<br>'+dd.getDate()+' '+MN_FULL[dd.getMonth()];
       if(mode==='month' && dd.getMonth()!==mm){ rows+='<tr class="out"><td>'+dcell+'</td><td colspan="5"></td></tr>'; continue; }
       if(!list.length){ rows+='<tr><td>'+dcell+'</td><td>'+(isHoliday(k).off?'หยุด':'-')+'</td><td></td><td></td><td></td><td></td></tr>'; continue; }
@@ -1105,7 +1114,8 @@ function printWeeks(weeks,mode,mo,yr){
         rows+='<tr>'+(gi?'':'<td rowspan="'+grps.length+'">'+dcell+'</td>')+'<td><b>'+esc(r.where[0]||'-')+'</b></td><td>'+esc(r.what.filter(Boolean).join('\n'))+'</td><td>'+esc(r.detail.filter(Boolean).join('\n')||'-')+'</td><td>'+esc(r.prob.join('\n')||'-')+'</td><td class="pics">'+(im||'-')+'</td></tr>';
       });
     }
-    pages+='<section class="pg"><div class="h">รายงานการทำงานสัปดาห์ที่ <u>&nbsp;&nbsp;'+ordTh(mode==='month'?wi+1:weekNo(ws))+'&nbsp;&nbsp;</u> เดือน <u>&nbsp;&nbsp;'+MN_FULL[mm]+' '+(yy+543)+'&nbsp;&nbsp;</u> ชื่อผู้ปฏิบัติงาน <u>&nbsp;&nbsp;'+esc(me.full)+'&nbsp;&nbsp;</u></div>'
+    var dK=onlyK?new Date(onlyK+'T00:00:00'):null;
+    pages+='<section class="pg"><div class="h">'+(mode==='day'?('รายงานการทำงานประจำวัน <u>&nbsp;&nbsp;วัน'+DOW_MON[(dK.getDay()+6)%7]+'ที่ '+dK.getDate()+' '+MN_FULL[dK.getMonth()]+' '+(dK.getFullYear()+543)+'&nbsp;&nbsp;</u>'):('รายงานการทำงานสัปดาห์ที่ <u>&nbsp;&nbsp;'+ordTh(mode==='month'?wi+1:weekNo(ws))+'&nbsp;&nbsp;</u> เดือน <u>&nbsp;&nbsp;'+MN_FULL[mm]+' '+(yy+543)+'&nbsp;&nbsp;</u>'))+' ชื่อผู้ปฏิบัติงาน <u>&nbsp;&nbsp;'+esc(me.full)+'&nbsp;&nbsp;</u></div>'
       +'<table><thead><tr><th style="width:7%">ประจำวัน</th><th style="width:12%">ไปที่ไหน</th><th style="width:13%">ทำอะไร</th><th style="width:16%">รายละเอียด</th><th style="width:12%">ปัญหาและแนวทางแก้ไข</th><th style="width:40%">ภาพประกอบ</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
   });
   var css='<style>@page{size:A4 landscape;margin:10mm}'
@@ -1120,7 +1130,7 @@ function printWeeks(weeks,mode,mo,yr){
     +'.more{font-size:10px;color:#555}'
     +'.bar{position:sticky;top:0;background:#0B1F4D;padding:8px;display:flex;gap:8px}.bar button{flex:1;padding:10px;border:1px solid #C9A24A;border-radius:8px;font-weight:700;font-size:14px}'
     +'@media print{.bar{display:none}}</style>';
-  var title=(mode==='month'?'รายงานรายเดือน':'รายงานรายสัปดาห์')+' · '+me.full;
+  var title=(mode==='month'?'รายงานรายเดือน':mode==='day'?'รายงานรายวัน':'รายงานรายสัปดาห์')+' · '+me.full;
   var w=window.open('','_blank');
   if(!w){ toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต pop-up ก่อนนะคะ'); return; }
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title>'+css+'</head><body>'
