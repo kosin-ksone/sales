@@ -427,7 +427,7 @@ function renderLogin(){
     });
     html+='</div>';
   });
-  html+='<button class="namebtn" style="justify-content:center;border:1.5px dashed var(--gold);background:var(--gold-tint);margin-top:14px" onclick="addTrainee()"><span class="nm" style="text-align:center;color:var(--brand)">＋ เพิ่มชื่อน้องทดลองงาน<small>ยังไม่มีชื่อในรายชื่อ</small></span></button>';
+  if(CFG.TRIAL) html+='<button class="namebtn" style="justify-content:center;border:1.5px dashed var(--gold);background:var(--gold-tint);margin-top:14px" onclick="addTrainee()"><span class="nm" style="text-align:center;color:var(--brand)">＋ เพิ่มชื่อน้องทดลองงาน<small>ยังไม่มีชื่อในรายชื่อ</small></span></button>';
   document.getElementById('namelist').innerHTML=html;
 }
 function pick(nick){
