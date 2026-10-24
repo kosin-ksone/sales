@@ -207,7 +207,7 @@
 
     <div class="body" id="tabReport">
       <div class="hero" id="reportHero"></div>
-      <div id="zonerow" class="zonerow hidden">
+      <div id="zonerow" class="zonerow hidden" style="display:none!important">
         <div class="zonechip">เขตทำงาน<b id="zWork">—</b></div>
         <div class="zonechip">เขตบ้าน<b id="zHome">—</b></div>
       </div>
@@ -229,7 +229,7 @@
           <input type="text" id="fHos" class="field" placeholder="พิมพ์ชื่อสถานที่ เช่น รพ.ศิริราช, บริษัท" autocomplete="off">
           <div id="hosList" class="hos-list hidden"></div>
         </div>
-        <div id="zoneNote" style="display:none;margin-top:8px;font-size:12px;color:var(--amber);background:var(--amber-bg);padding:8px 10px;border-radius:10px"></div>
+        <div id="zoneNote" style="display:none!important;margin-top:8px;font-size:12px;color:var(--amber);background:var(--amber-bg);padding:8px 10px;border-radius:10px"></div>
       </div>
 
       <!-- ฟอร์มเดิม: พิมพ์เองทั้งหมด -->
@@ -457,7 +457,7 @@ function showHos(q){
 }
 function pickHos(h){
   fHos.value=h; hosList.classList.add('hidden');
-  var z=document.getElementById('zoneNote');
+  var z=null; // ไม่แจ้งในเขต/นอกเขตแล้ว (แอปแค่บันทึก ไม่มีเรื่องเงิน)
   if(z){
     if(h && !isOwnHos(h)){ z.style.display='block'; z.textContent='📍 รพ.นี้อยู่นอกเขตของคุณ — ระบบบันทึกเป็น "เขตอื่น" ให้อัตโนมัติ'; }
     else{ z.style.display='none'; }
@@ -1000,7 +1000,7 @@ function fmtShort(k){ var d=new Date(k+'T00:00:00'); return d.getDate()+' '+MN_S
 function dayRow(list){
   var where=[],what=[],detail=[],prob=[],thumbs=[],count=0;
   list.forEach(function(r){
-    if(r.hospital) where.push(r.hospital+(r.zoneType==='เขตอื่น'?' (เขตอื่น)':''));
+    if(r.hospital) where.push(r.hospital);
     var jobs=(r.jobTypes||'').split(' || ').filter(function(x){return x.trim();});
     var jn=jobs.map(function(j){ return j.split(' — ')[0]; });
     what.push(r.what?r.what:(jn.join(', ')+(r.product?((jn.length?' · ':'')+'เสนอ '+r.product):'')));
