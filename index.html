@@ -299,7 +299,7 @@
     <div class="big">✓</div>
     <h2>บันทึกรายงานเรียบร้อย</h2>
     <p id="okMsg">ขอบคุณค่ะ</p>
-    <button class="send navy" style="max-width:280px;margin:0 auto" onclick="newReport()">+ กรอกรายงานใหม่</button>
+    <button class="send navy" style="max-width:280px;margin:0 auto" onclick="newReport()">+ บันทึกเพิ่ม (วันเดียวกัน)</button>
     <button class="send ghost" style="max-width:280px;margin:10px auto 0" onclick="goMine()">ดูรายงานของฉัน</button>
     <button class="send ghost" style="max-width:280px;margin:10px auto 0" onclick="printReport()">แชร์รายงานนี้</button>
     <div class="ver"><b>v2.0</b> · 24 ต.ค. 69</div>
@@ -660,7 +660,7 @@ function resetForm(){
   document.getElementById('hint').textContent='';
   if(typeof dayItems!=='undefined'){ dayItems=[]; renderDayList(); }
 }
-function newReport(){ document.getElementById('okScreen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); resetForm(); window.scrollTo(0,0); }
+function newReport(){ var keep=fDate.value; document.getElementById('okScreen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); resetForm(); if(keep){ fDate.value=keep; checkDate(); } window.scrollTo(0,0); }   // บันทึกเพิ่มได้เรื่อยๆ วันเดิมไม่หาย
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},1800);}
 
 function submitOne(silent){
