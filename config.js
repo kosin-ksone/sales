@@ -3,6 +3,9 @@ window.APP_CONFIG = {
 
   // URL ของ Google Apps Script Web App (ต้องลงท้าย /exec) — เว้นว่าง = โหมดทดลอง (เก็บลงเครื่อง)
   // v2 ยังเป็นตัวทดลอง → เว้นว่างไว้ กันส่งเข้าระบบจริง
+  // ลิงก์หลังบ้าน sales.kosin (ชีตกลาง + รูป Drive 3 เดือน) — Dashboard เห็นรายงานจริง · เว้นว่าง = เก็บในเครื่องอย่างเดียว
+  SYNC_URL: "https://script.google.com/macros/s/AKfycbxdp2F0oxiP_8uQWeU8WoYo3-jr8QAIYm84YeQZ2P_PX-6UjFzg3tKu32lP2y1_wisDXQ/exec",
+
   SUBMIT_URL: "",
 
   // จำนวนวันย้อนหลังที่กรอกได้ (เกินนี้ระบบจะไม่นับว่าส่งในวันนั้น)
