@@ -1139,6 +1139,18 @@ function syncBadge(){ var el=document.getElementById('syncInfo'); if(!el||!SYNC_
 if(SYNC_URL){ window.addEventListener('online',syncFlush); setInterval(syncFlush,60000); setTimeout(function(){ syBackfill(); syncFlush(); },1500); }
 var SY_APP='sales';
 function syBackfill(){ try{ if(localStorage.getItem('kosin_sales_sync_bf1')) return; loadMy().forEach(function(r){ if(!r.id) return; syncPush({op:'upsert',rec:r,photos:{add:(r.thumbs||[]).filter(Boolean)}}); }); localStorage.setItem('kosin_sales_sync_bf1','1'); }catch(e){} }
+/* ===== ย้ายรายงานจากแอปทดลองงานเดิม (ลิงก์ sales-trial · เครื่องเดียวกัน) มาแอปหลัก ครั้งเดียว ===== */
+function trialMerge(){ try{
+  if((window.APP_CONFIG||{}).TRIAL||localStorage.getItem('kosin_sales_trial_merged')) return;
+  var old=JSON.parse(localStorage.getItem('kosintrial'+'_sales_reports')||'[]');
+  if(old.length){ var a=loadMy(), ids={}; a.forEach(function(r){ ids[r.id]=1; }); var add=[];
+    old.forEach(function(r){ if(!r.id||ids[r.id]) return; r.name=String(r.name||'').replace(/\s*\(ทดลองงาน\)\s*$/,''); a.push(r); add.push(r); });
+    localStorage.setItem(MY_KEY,JSON.stringify(a)); add.forEach(function(r){ syncPush({op:'upsert',rec:r,photos:{add:(r.thumbs||[]).filter(Boolean)}}); }); }
+  var op=JSON.parse(localStorage.getItem('kosintrial'+'_sales_plans')||'{}'), np=JSON.parse(localStorage.getItem('kosin_sales_plans')||'{}');
+  Object.keys(op).forEach(function(k){ if(!np[k]) np[k]=op[k]; }); if(Object.keys(op).length) localStorage.setItem('kosin_sales_plans',JSON.stringify(np));
+  localStorage.setItem('kosin_sales_trial_merged','1');
+}catch(e){} }
+trialMerge();
 function renderMine(){
   ensureIds();
   if(!mineWeek) mineWeek=mondayStart(todayStr());
