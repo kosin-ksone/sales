@@ -1276,7 +1276,7 @@ function printWeeks(weeks,mode,mo,yr,onlyK){
     for(var i=0;i<7;i++){
       var k=addDays(ws,i), dd=new Date(k+'T00:00:00'), list=mine.filter(function(r){return r.workDate===k;});
       if(mode==='day' && k!==onlyK) continue;
-      var dcell='วัน'+DOW_MON[i]+'ที่<br>'+dd.getDate()+' '+MN_FULL[dd.getMonth()];
+      var dcell=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][dd.getDay()]+' '+dd.getDate()+' '+MN_SHORT[dd.getMonth()]+' '+String((dd.getFullYear()+543)%100);   // สั้น: จ. 26 ต.ค. 69
       if(mode==='month' && dd.getMonth()!==mm){ rows+='<tr class="out"><td>'+dcell+'</td><td colspan="5"></td></tr>'; continue; }
       if(!list.length){ rows+='<tr><td>'+dcell+'</td><td>'+(isHoliday(k).off?'หยุด':'-')+'</td><td></td><td></td><td></td><td></td></tr>'; continue; }
       var grps=byHos(list);
@@ -1288,7 +1288,7 @@ function printWeeks(weeks,mode,mo,yr,onlyK){
     }
     var dK=onlyK?new Date(onlyK+'T00:00:00'):null;
     pages+='<section class="pg"><div class="h">'+(mode==='day'?('รายงานการทำงานประจำวัน <u>&nbsp;&nbsp;วัน'+DOW_MON[(dK.getDay()+6)%7]+'ที่ '+dK.getDate()+' '+MN_FULL[dK.getMonth()]+' '+(dK.getFullYear()+543)+'&nbsp;&nbsp;</u>'):('รายงานการทำงานสัปดาห์ที่ <u>&nbsp;&nbsp;'+ordTh(mode==='month'?wi+1:weekNo(ws))+'&nbsp;&nbsp;</u> เดือน <u>&nbsp;&nbsp;'+MN_FULL[mm]+' '+(yy+543)+'&nbsp;&nbsp;</u>'))+' ชื่อผู้ปฏิบัติงาน <u>&nbsp;&nbsp;'+esc(me.full)+'&nbsp;&nbsp;</u></div>'
-      +'<table><thead><tr><th style="width:7%">ประจำวัน</th><th style="width:12%">ไปที่ไหน</th><th style="width:13%">ทำอะไร</th><th style="width:16%">รายละเอียด</th><th style="width:12%">ปัญหาและแนวทางแก้ไข</th><th style="width:40%">ภาพประกอบ</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
+      +'<table><thead><tr><th style="width:9%">ประจำวัน</th><th style="width:12%">ไปที่ไหน</th><th style="width:13%">ทำอะไร</th><th style="width:16%">รายละเอียด</th><th style="width:12%">ปัญหาและแนวทางแก้ไข</th><th style="width:40%">ภาพประกอบ</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
   });
   var css='<style>@page{size:A4 landscape;margin:10mm}'
     +'body{margin:0;font-family:"TH SarabunPSK","Sarabun","Tahoma",sans-serif;color:#000;font-size:13px}'
