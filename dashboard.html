@@ -117,7 +117,7 @@ function go(t){tab=t;document.querySelectorAll('#tabs button').forEach(b=>b.clas
 function months(){const s=$('#selMonth');const ms=[...new Set(RECS.map(r=>r.workDate.slice(0,7)).concat([TODAY.slice(0,7)]))].sort().reverse();
   s.innerHTML=ms.map(m=>'<option value="'+m+'">'+MONF[+m.slice(5)-1]+' '+(+m.slice(0,4)+543)+'</option>').join('');s.value=month;s.onchange=()=>{month=s.value;go(tab);};}
 const SYNC_URL=(window.APP_CONFIG&&window.APP_CONFIG.SYNC_URL)||'';let LIVE=false,liveAt=null;
-function loadLive(){if(!SYNC_URL||sampleOn())return;LIVE=false;demoBar();const n=new Date(),from=dk(new Date(n.getFullYear(),n.getMonth()-5,1));
+function loadLive(){if(!SYNC_URL||sampleOn())return;LIVE=false;demoBar();const n=new Date(),from=dk(new Date(n.getFullYear(),n.getMonth()-11,1));
   fetch(SYNC_URL+'?op=list&app=sales&from='+from).then(r=>r.json()).then(j=>{if(!j||!j.ok)throw 0;if(sampleOn())return;RECS=j.list.map(o=>({id:o.id,rep:o.nick,full:o.name||repOf(o.nick).full,region:repOf(o.nick).region||o.region||'',workDate:o.workDate,hospital:o.hospital,what:o.what||'',detail:o.detail||'',help:o.help||'',photos:o.photos||[],lateDays:+o.lateDays||0}));LIVE=true;liveAt=new Date();months();demoBar();go(tab);})
   .catch(()=>{$('#demoBar').innerHTML='⚠️ โหลดรายงานไม่สำเร็จ (เน็ต/ระบบ) · <a href="#" onclick="loadLive();return false">ลองใหม่</a>';});}
 const liveBar=()=>LIVE?'🟢 รายงานจริงจากแอปผู้แทน '+RECS.length+' รายการ · อัปเดต '+String(liveAt.getHours()).padStart(2,'0')+':'+String(liveAt.getMinutes()).padStart(2,'0')+' · <a href="#" onclick="loadLive();return false">โหลดใหม่</a> · <a href="#" id="sampleOn">ดูข้อมูลตัวอย่าง</a>'
