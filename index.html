@@ -1122,7 +1122,7 @@ function restoreData(){
   inp.click();
 }
 /* ===== ✉️ ร่างอีเมลส่งรายงานสัปดาห์ — เปิดแอปเมลของเซลเอง (ระบบไม่ส่ง) ===== */
-var MAIL_TO_SALES='kosie_y@yahoo.com,fonkosin@gmail.com', MAIL_CC_SALES='workreport.kosin@gmail.com';
+var MAIL_TO_SALES='kosie_y@yahoo.com', MAIL_CC_SALES='workreport.kosin@gmail.com';
 function draftMail(){
   if(!me){ toast('เลือกชื่อก่อนนะคะ'); return; }
   var ws=mineWeek||mondayStart(), we=addDays(ws,6), yy=function(k){ return String((+k.slice(0,4)+543)%100); };
