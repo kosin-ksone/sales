@@ -182,7 +182,7 @@
   .modal p{font-size:13px;color:var(--mut);line-height:1.6;margin:0 0 16px}
   .modal .mb{display:flex;flex-direction:column;gap:8px}
 </style>
-<style>@keyframes syBlink{50%{opacity:.35}}.syBlink{animation:syBlink 1s infinite;color:#B7791F;font-weight:700}</style></head>
+<style>@keyframes syBlink{50%{opacity:.35}}.syBlink{animation:syBlink 1s infinite;color:#B7791F;font-weight:700}</style><style>.bellbtn{border:0;background:rgba(255,255,255,.15);border-radius:12px;font-size:20px;padding:4px 8px;margin-right:6px;position:relative;cursor:pointer}.bellbtn i{position:absolute;top:-4px;right:-4px;background:#E53935;color:#fff;font-style:normal;font-size:11px;font-weight:700;border-radius:10px;padding:1px 6px}.bellbtn.ring{animation:bellR 1.2s infinite}@keyframes bellR{0%,60%,100%{transform:rotate(0)}10%,30%{transform:rotate(-14deg)}20%,40%{transform:rotate(14deg)}}.bellov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99999;display:flex;align-items:flex-end;justify-content:center}.bellbox{background:#fff;border-radius:18px 18px 0 0;padding:16px;width:100%;max-width:560px;max-height:85vh;overflow:auto;color:#222}.bellbox .bx{border:0;background:#eee;border-radius:50%;width:32px;height:32px;font-size:16px}.bellit{border:1px solid #e3e3e3;border-radius:12px;padding:10px;margin-bottom:10px}.bellit .bh{font-weight:700;font-size:14px;margin-bottom:6px}.bellit small{color:#888;font-weight:400}.bks,.bme{font-size:14.5px;line-height:1.55;padding:7px 10px;border-radius:10px;margin:5px 0}.bks{background:#EEF4FF}.bme{background:#F1F8EE;margin-left:24px}.bellit textarea{width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:10px;padding:8px;font:inherit;font-size:15px;margin-top:6px}.bsend{margin-top:6px;border:0;border-radius:10px;padding:9px 18px;font-weight:700;background:#0B1F4D;color:#fff;font-size:14px}</style></head>
 <body>
 <div class="wrap">
 
@@ -206,6 +206,7 @@
         <div class="brandname">KOSIN</div>
         <div class="sub">รายงานผู้แทน</div>
       </div>
+      <button id="bellBtn" class="bellbtn hidden" type="button" onclick="bellOpen()">🔔</button>
       <div class="who" onclick="logout()">
         <b id="whoName">—</b>
         <span id="whoReg"></span> · เปลี่ยน
@@ -439,7 +440,7 @@ function pick(nick){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('whoName').textContent = me.full;
-  document.getElementById('whoReg').textContent = me.region;
+  document.getElementById('whoReg').textContent = me.region; setTimeout(function(){ bellPull(true); },1500);
   // zones
   if(me.work){
     document.getElementById('zonerow').classList.remove('hidden');
@@ -690,8 +691,7 @@ document.getElementById('fCam').addEventListener('change',function(e){ addFiles(
 function renderPhotos(){
   var html='';
   photos.forEach(function(p,i){
-    var fl=(p.flags&&p.flags.length)?'<span class="ph-tag">'+p.flags[0]+'</span>':'';
-    html+='<div class="ph-wrap"><img src="'+p.data+'" data-i="'+i+'" class="ph'+((p.flags&&p.flags.length)?' flagged':'')+'">'+fl+'<button class="ph-x" onclick="delPhoto('+i+')">×</button></div>';
+    html+='<div class="ph-wrap"><img src="'+p.data+'" data-i="'+i+'" class="ph"><button class="ph-x" onclick="delPhoto('+i+')">×</button></div>';
   });
   if(photos.length<PHOTO_MAX) html+='<div class="ph-add" data-src="cam">'+IC.cam+'ถ่ายรูป</div><div class="ph-add" data-src="gal">'+IC.gal+'คลังภาพ</div>';
   document.getElementById('photos').innerHTML=html;
@@ -780,7 +780,7 @@ function submitOne(silent){
     what:document.getElementById('fWhat').value.trim(),
     detail:document.getElementById('fDetail').value.trim(),
     flags:flagList.join(', '),
-    photoMeta:photoMeta,
+    photoMeta:photoMeta, photoDates:photoMeta.map(function(m){return m.taken;}).filter(function(d,i,a){return d&&a.indexOf(d)===i;}),
     product:document.getElementById('fProduct').value.trim(),
     budget:document.getElementById('fBudget').value.trim(),
     competitor:document.getElementById('fCompetitor').value.trim(),
@@ -1139,6 +1139,22 @@ var BK_APP='sales', BK_KEYS=['kosin_sales_reports','kosin_sales_plans','kosin_sa
 function bkName(){ try{ return (me&&me.full)||'เซล'; }catch(e){ return ''; } }
 /* ===== ส่งเข้าระบบกลาง sales.kosin (Dashboard เห็น) — เข้าคิวในเครื่องก่อน ส่งไม่ผ่าน (ไม่มีเน็ต) จะลองใหม่เอง ===== */
 var SYNC_URL=(window.APP_CONFIG&&!window.APP_CONFIG.TRIAL&&window.APP_CONFIG.SYNC_URL)||'', SY_DB=null, syBusy=false, syErr=false, syManual=false;
+/* ===== 🔔 ข้อความจาก KOSIE (ดึงจากระบบ · ไม่ใช้อีเมล) ===== */
+var BELL=[],bellAt=0;
+function bellSeen(){try{return localStorage.getItem('kosie_seen_sales')||''}catch(e){return ''}}
+function bellNew(){var s=bellSeen(),c=0;BELL.forEach(function(r){r.notes.forEach(function(n){if(n.from!=='staff'&&n.at>s)c++;});});return c;}
+function bellPaint(){var b=document.getElementById('bellBtn');if(!b)return;var c=bellNew();b.classList.toggle('hidden',!BELL.length);b.innerHTML='🔔'+(c?'<i>'+c+'</i>':'');b.classList.toggle('ring',!!c);}
+function bellPull(force){var who=(me&&me.nick);if(!SYNC_URL||!who||(!force&&Date.now()-bellAt<60000))return;bellAt=Date.now();
+  fetch(SYNC_URL+'?op=notes&app=sales&who='+encodeURIComponent(who)).then(function(r){return r.json();}).then(function(j){if(!j||!j.ok)return;BELL=j.list.sort(function(a,b){return (b.notes[b.notes.length-1].at>a.notes[a.notes.length-1].at)?1:-1;});bellPaint();}).catch(function(){});}
+function bellOpen(){var mx='';BELL.forEach(function(r){r.notes.forEach(function(n){if(n.at>mx)mx=n.at;});});try{localStorage.setItem('kosie_seen_sales',mx)}catch(e){}bellPaint();
+  var e=function(s){return String(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  var o=document.createElement('div');o.className='bellov';
+  o.innerHTML='<div class="bellbox"><div style="display:flex;align-items:center;margin-bottom:8px"><b style="flex:1;font-size:17px">🔔 ข้อความจาก KOSIE</b><button class="bx">✕</button></div>'+(BELL.length?BELL.map(function(r,i){return '<div class="bellit"><div class="bh">'+e(new Date(r.d+'T00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}))+' · '+e(r.h)+'<br><small>'+e(r.w)+'</small></div>'+r.notes.map(function(n){return '<div class="'+(n.from==='staff'?'bme':'bks')+'"><b>'+(n.from==='staff'?'ฉันตอบ':'KOSIE')+'</b> <small>'+e(new Date(n.at).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+'</small><br>'+e(n.t)+'</div>';}).join('')+'<textarea rows="2" placeholder="พิมพ์ตอบ KOSIE" data-i="'+i+'"></textarea><button class="bsend" data-i="'+i+'">ส่งคำตอบ</button></div>';}).join(''):'<div style="color:#888;padding:20px;text-align:center">ยังไม่มีข้อความ</div>')+'</div>';
+  document.body.appendChild(o);o.onclick=function(ev){if(ev.target===o||ev.target.className==='bx')o.remove();};
+  [].forEach.call(o.querySelectorAll('.bsend'),function(b){b.onclick=function(){var i=+b.dataset.i,ta=o.querySelector('textarea[data-i="'+i+'"]'),t=ta.value.trim();if(!t)return;b.disabled=true;b.textContent='กำลังส่ง…';
+    fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({app:'sales',op:'note',id:BELL[i].id,text:t,by:(me&&me.nick),from:'staff'})}).then(function(r){return r.json();}).then(function(j){if(!j.ok)throw 0;BELL[i].notes=j.notes;o.remove();bellOpen();}).catch(function(){b.disabled=false;b.textContent='ส่งไม่สำเร็จ ลองอีกครั้ง';});};});}
+setInterval(function(){if(document.visibilityState==='visible')bellPull();},60000);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')bellPull(true);});setTimeout(function(){bellPull(true);},2500);
+
 function syDb(){ return SY_DB||(SY_DB=new Promise(function(res,rej){ var q=indexedDB.open('kosin_sync_'+SY_APP,1); q.onupgradeneeded=function(){ q.result.createObjectStore('q',{keyPath:'k',autoIncrement:true}); }; q.onsuccess=function(){ res(q.result); }; q.onerror=function(){ rej(q.error); }; })); }
 function syAll(db){ return new Promise(function(res){ var a=[], c=db.transaction('q').objectStore('q').openCursor(); c.onsuccess=function(){ var x=c.result; if(x){ a.push(x.value); x.continue(); } else res(a); }; c.onerror=function(){ res(a); }; }); }
 function syncPush(o){ if(!SYNC_URL) return; o.app=SY_APP; if(o.rec){ o.rec=JSON.parse(JSON.stringify(o.rec)); delete o.rec.thumbs; delete o.rec.photos; }
@@ -1300,7 +1316,7 @@ function printWeeks(weeks,mode,mo,yr,onlyK){
     }
     var dK=onlyK?new Date(onlyK+'T00:00:00'):null;
     pages+='<section class="pg"><div class="h">'+(mode==='day'?('รายงานการทำงานประจำวัน <u>&nbsp;&nbsp;วัน'+DOW_MON[(dK.getDay()+6)%7]+'ที่ '+dK.getDate()+' '+MN_FULL[dK.getMonth()]+' '+(dK.getFullYear()+543)+'&nbsp;&nbsp;</u>'):('รายงานการทำงานสัปดาห์ที่ <u>&nbsp;&nbsp;'+ordTh(mode==='month'?wi+1:weekNo(ws))+'&nbsp;&nbsp;</u> เดือน <u>&nbsp;&nbsp;'+MN_FULL[mm]+' '+(yy+543)+'&nbsp;&nbsp;</u>'))+' ชื่อผู้ปฏิบัติงาน <u>&nbsp;&nbsp;'+esc(me.full)+'&nbsp;&nbsp;</u></div>'
-      +'<table><thead><tr><th style="width:9%">ประจำวัน</th><th style="width:12%">ไปที่ไหน</th><th style="width:13%">ทำอะไร</th><th style="width:16%">รายละเอียด</th><th style="width:12%">ปัญหาและแนวทางแก้ไข</th><th style="width:40%">ภาพประกอบ</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
+      +'<table><thead><tr><th style="width:9%">ประจำวัน</th><th style="width:12%">ไปที่ไหน</th><th style="width:12%">ทำอะไร</th><th style="width:33%">รายละเอียด</th><th style="width:12%">ปัญหาและแนวทางแก้ไข</th><th style="width:22%">ภาพประกอบ</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
   });
   var css='<style>@page{size:A4 landscape;margin:10mm}'
     +'body{margin:0;font-family:"TH SarabunPSK","Sarabun","Tahoma",sans-serif;color:#000;font-size:13px}'
@@ -1310,7 +1326,7 @@ function printWeeks(weeks,mode,mo,yr,onlyK){
     +'th,td{border:1px solid #000;padding:4px 5px;vertical-align:top;white-space:pre-line;word-wrap:break-word}'
     +'th{background:#f2f2f2;font-size:14px}td{font-size:12.5px}'
     +'tr.out td{background:#fafafa;color:#999}'
-    +'.pics img{width:31.5%;margin:.9%;aspect-ratio:4/3;object-fit:cover;border:1px solid #ccc}'
+    +'.pics img{width:23%;margin:1%;aspect-ratio:4/3;object-fit:cover;border:1px solid #ccc}'   // 27 ต.ค. 69 เหมือนช่าง: รายละเอียดกว้าง รูป 4/แถว
     +'.more{font-size:10px;color:#555}'
     +'.bar{position:sticky;top:0;background:#0B1F4D;padding:8px;display:flex;gap:8px}.bar button{flex:1;padding:10px;border:1px solid #C9A24A;border-radius:8px;font-weight:700;font-size:14px}'
     +'@media print{.bar{display:none}}</style>';
