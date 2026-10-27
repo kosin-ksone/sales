@@ -1041,13 +1041,13 @@ function showModal(title,body,buttons){
   });
 }
 
-// ---------- รายงานของฉัน (เก็บสำเนาย่อในเครื่อง · สัปดาห์ อาทิตย์–เสาร์) ----------
+// ---------- รายงานของฉัน (เก็บสำเนาย่อในเครื่อง · สัปดาห์ จันทร์–อาทิตย์) ----------
 var MY_KEY='kosin_sales_reports', SENT_KEY='kosin_sales_weeksent', KEEP_THUMB_DAYS=15;
 var MN_FULL=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 var MN_SHORT=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 var DOW_MON=['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
 var mineWeek=null;
-function mondayStart(dstr){ var x=dstr?new Date(dstr+'T00:00:00'):new Date(); x.setHours(0,0,0,0); x.setDate(x.getDate()-x.getDay()); return dkey(x); }   // 27 ต.ค. 69 พี่ฝน: สัปดาห์ อา–ส เหมือนแอปช่าง (ชื่อฟังก์ชันเดิม แต่เริ่มวันอาทิตย์)
+function mondayStart(dstr){ var x=dstr?new Date(dstr+'T00:00:00'):new Date(); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()+6)%7)); return dkey(x); }
 function addDays(k,n){ var d=new Date(k+'T00:00:00'); d.setDate(d.getDate()+n); return dkey(d); }
 function loadMy(){ try{ return JSON.parse(localStorage.getItem(MY_KEY)||'[]'); }catch(e){ return []; } }
 function myReports(){ return loadMy().filter(function(r){ return r.nick===me.nick; }); }
@@ -1182,7 +1182,7 @@ function renderMine(){ syncPull();
   var h='<div class="hero"><div class="t">รายงานการทำงาน · สัปดาห์ที่ '+weekNo(ws)+' เดือน '+MN_FULL[d0.getMonth()]+' '+(d0.getFullYear()+543)+'</div>'
     +'<div class="n">'+esc(me.full)+'</div><div class="s">'+inWeek.length+' รายงาน · '+inWeek.reduce(function(a,r){return a+(r.photoCount||0);},0)+' รูป</div>'
     +'</div>';
-  h+='<div class="wknav"><button class="wkbtn" onclick="mineNav(-1)">‹</button><div class="c"><b>'+fmtShort(ws)+' – '+fmtShort(we)+' '+(new Date(we+'T00:00:00').getFullYear()+543)+'</b><small>'+(ws===thisWs?'สัปดาห์นี้':(ws>thisWs?'สัปดาห์หน้า':'ผ่านมาแล้ว'))+' · อาทิตย์–เสาร์</small></div><button class="wkbtn" onclick="mineNav(1)">›</button></div>';
+  h+='<div class="wknav"><button class="wkbtn" onclick="mineNav(-1)">‹</button><div class="c"><b>'+fmtShort(ws)+' – '+fmtShort(we)+' '+(new Date(we+'T00:00:00').getFullYear()+543)+'</b><small>'+(ws===thisWs?'สัปดาห์นี้':(ws>thisWs?'สัปดาห์หน้า':'ผ่านมาแล้ว'))+' · จันทร์–อาทิตย์</small></div><button class="wkbtn" onclick="mineNav(1)">›</button></div>';
   if(sent) h+='<div class="sentbox">🔒 ส่งสัปดาห์นี้แล้ว '+new Date(sent).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' · ปิดสัปดาห์ (กำลังตรวจ)</div>';
   for(var i=0;i<7;i++){
     var k=addDays(ws,i), list=inWeek.filter(function(r){return r.workDate===k;}), di=isHoliday(k), dd=new Date(k+'T00:00:00');
@@ -1328,7 +1328,7 @@ function autoSavePlan(ws){   // เซฟอัตโนมัติ
   if(CFG.SUBMIT_URL){ fetch(CFG.SUBMIT_URL,{method:'POST',body:JSON.stringify({action:'plan',nick:me.nick,name:me.full,email:me.email,region:me.region,weekStart:ws,plan:myPlan(ws)}),headers:{'Content-Type':'text/plain;charset=utf-8'}}).catch(function(){}); }
 }
 function renderPlan(){ if(planView==='month') renderPlanMonth(); else renderPlanWeek(); }
-/* ===== โหลดแพลน (อา–ส) — เซลกดเองแล้วส่งเมลปลายทางเอง ===== */
+/* ===== โหลดแพลน (จ–อา) — เซลกดเองแล้วส่งเมลปลายทางเอง ===== */
 function slotsOf(v){ if(!v) return {}; if(Array.isArray(v)) return v.length?{'เช้า':v.join(', ')}:{}; return v; }
 function planOfDay(k){ var a=(loadPlans()[me.nick])||{}; return slotsOf((a[sundayStart(k)]||{})[k]); }
 function printPlan(sun){   // ฟอร์มแพลนเดิม (xlsx): อาทิตย์–เสาร์ แนวนอน · เช้า/บ่าย · วันหยุดเหลือง
