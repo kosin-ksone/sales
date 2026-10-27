@@ -182,7 +182,7 @@
   .modal p{font-size:13px;color:var(--mut);line-height:1.6;margin:0 0 16px}
   .modal .mb{display:flex;flex-direction:column;gap:8px}
 </style>
-</head>
+<style>@keyframes syBlink{50%{opacity:.35}}.syBlink{animation:syBlink 1s infinite;color:#B7791F;font-weight:700}</style></head>
 <body>
 <div class="wrap">
 
@@ -1138,19 +1138,22 @@ function bkRow(){ setTimeout(syncBadge,50); return '<button type="button" onclic
 var BK_APP='sales', BK_KEYS=['kosin_sales_reports','kosin_sales_plans','kosin_sales_trainees','kosin_sales_me'];
 function bkName(){ try{ return (me&&me.full)||'เซล'; }catch(e){ return ''; } }
 /* ===== ส่งเข้าระบบกลาง sales.kosin (Dashboard เห็น) — เข้าคิวในเครื่องก่อน ส่งไม่ผ่าน (ไม่มีเน็ต) จะลองใหม่เอง ===== */
-var SYNC_URL=(window.APP_CONFIG&&!window.APP_CONFIG.TRIAL&&window.APP_CONFIG.SYNC_URL)||'', SY_DB=null, syBusy=false;
+var SYNC_URL=(window.APP_CONFIG&&!window.APP_CONFIG.TRIAL&&window.APP_CONFIG.SYNC_URL)||'', SY_DB=null, syBusy=false, syErr=false, syManual=false;
 function syDb(){ return SY_DB||(SY_DB=new Promise(function(res,rej){ var q=indexedDB.open('kosin_sync_'+SY_APP,1); q.onupgradeneeded=function(){ q.result.createObjectStore('q',{keyPath:'k',autoIncrement:true}); }; q.onsuccess=function(){ res(q.result); }; q.onerror=function(){ rej(q.error); }; })); }
 function syAll(db){ return new Promise(function(res){ var a=[], c=db.transaction('q').objectStore('q').openCursor(); c.onsuccess=function(){ var x=c.result; if(x){ a.push(x.value); x.continue(); } else res(a); }; c.onerror=function(){ res(a); }; }); }
 function syncPush(o){ if(!SYNC_URL) return; o.app=SY_APP; if(o.rec){ o.rec=JSON.parse(JSON.stringify(o.rec)); delete o.rec.thumbs; delete o.rec.photos; }
   syDb().then(function(db){ var t=db.transaction('q','readwrite'); t.objectStore('q').add(o); t.oncomplete=function(){ syncFlush(); }; }).catch(function(){}); }
 function syncFlush(){ if(!SYNC_URL||syBusy) return; syBusy=true;
   syDb().then(function(db){ return syAll(db).then(function(items){
-    var stop=function(){ syBusy=false; syncBadge(); };
-    var step=function(i){ if(i>=items.length) return stop(); var it=items[i];
+    var stop=function(e){ syBusy=false; syErr=!!e; syncBadge(); if(!e&&items.length) syPop('✅ ส่งเข้าระบบเรียบร้อย','รายงานเข้าระบบบริษัทแล้ว '+items.length+' รายการ<br>Dashboard เห็นแล้ว'); else if(e&&syManual) syPop('⚠️ ยังส่งไม่สำเร็จ','เช็กเน็ตแล้วกด ส่งตอนนี้ อีกครั้ง<br>(รายงานยังอยู่ในเครื่อง ไม่หาย)'); syManual=false; };
+    var el=document.getElementById('syncInfo'), show=function(i){ if(el&&items.length) el.innerHTML='<span class="syBlink">⏳ กำลังส่งเข้าระบบ '+(i+1)+'/'+items.length+' … รอสักครู่ (รูปเยอะจะนานหน่อย)</span>'; };
+    var step=function(i){ if(i>=items.length) return stop(); var it=items[i]; show(i);
       fetch(SYNC_URL,{method:'POST',body:JSON.stringify(it),headers:{'Content-Type':'text/plain;charset=utf-8'}}).then(function(r){ return r.json(); }).then(function(j){
-        if(j&&(j.ok||['notfound','app','op'].indexOf(j.err)>=0)){ var t=db.transaction('q','readwrite'); t.objectStore('q').delete(it.k); t.oncomplete=function(){ step(i+1); }; } else stop(); }).catch(stop); };
+        if(j&&(j.ok||['notfound','app','op'].indexOf(j.err)>=0)){ var t=db.transaction('q','readwrite'); t.objectStore('q').delete(it.k); t.oncomplete=function(){ step(i+1); }; } else stop(1); }).catch(function(){ stop(1); }); };
     step(0); }); }).catch(function(){ syBusy=false; }); }
-function syncBadge(){ var el=document.getElementById('syncInfo'); if(!el||!SYNC_URL) return; syDb().then(syAll).then(function(a){ el.innerHTML=a.length?'⏳ รอส่งเข้าระบบ '+a.length+' รายการ (ต่อเน็ตแล้วจะส่งเอง) · <a href="#" onclick="syncFlush();return false">ส่งตอนนี้</a>':'✅ ส่งเข้าระบบครบแล้ว'; }).catch(function(){}); }
+/* ป๊อปอัปยืนยันส่งเข้าระบบ (บาสขอ 27 ต.ค. 69) */
+function syPop(t,m){ var o=document.createElement('div'); o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:99999;padding:24px'; o.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px 20px;max-width:320px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25)"><div style="font-size:19px;font-weight:800;margin-bottom:8px">'+t+'</div><div style="font-size:14.5px;color:#555;line-height:1.6">'+m+'</div><button style="margin-top:16px;border:0;border-radius:10px;padding:11px 28px;font-size:15px;font-weight:700;background:#5A3E2B;color:#fff">ตกลง</button></div>'; o.onclick=function(){ o.remove(); }; document.body.appendChild(o); }
+function syncBadge(){ var el=document.getElementById('syncInfo'); if(!el||!SYNC_URL) return; syDb().then(syAll).then(function(a){ el.innerHTML=a.length?'⏳ รอส่งเข้าระบบ '+a.length+' รายการ (ต่อเน็ตแล้วจะส่งเอง) · <a href="#" onclick="syManual=true;syncFlush();return false">ส่งตอนนี้</a>'+(syErr?'<br><span style="color:#C53030">ส่งไม่สำเร็จ — เช็กเน็ตแล้วกด ส่งตอนนี้ อีกครั้ง</span>':''):'✅ ส่งเข้าระบบครบแล้ว'; }).catch(function(){}); }
 if(SYNC_URL){ window.addEventListener('online',syncFlush); setInterval(syncFlush,60000); setTimeout(function(){ syBackfill(); syncFlush(); },1500); }
 var SY_APP='sales';
 function syBackfill(){ try{ if(localStorage.getItem('kosin_sales_sync_bf1')) return; loadMy().forEach(function(r){ if(!r.id) return; syncPush({op:'upsert',rec:r,photos:{add:(r.thumbs||[]).filter(Boolean)}}); }); localStorage.setItem('kosin_sales_sync_bf1','1'); }catch(e){} }
