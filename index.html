@@ -480,7 +480,7 @@ fHos.addEventListener('input',function(){showHos(fHos.value);});
 document.addEventListener('click',function(e){ if(!e.target.closest('.hos-search')) hosList.classList.add('hidden'); });
 function isOwnHos(h){ return (HOSP[me.nick]||[]).indexOf(h)>-1; }
 // รายชื่อ รพ. ที่ช่วยแนะนำ: มีเขต = เฉพาะเขตตัวเอง · ยังไม่มีเขต (เช่น น้องทดลองงาน) = ทุก รพ.
-function myHosp(){ var own=HOSP[me.nick]||[], l=own.length?own:ALL_HOSP.slice().sort(new Intl.Collator('th').compare); var off={'กทม.':'ออฟฟิศ กทม.','ภาคอีสาน':'ออฟฟิศ ขอนแก่น','ภาคใต้':'ออฟฟิศ หาดใหญ่','ภาคเหนือ':'ออฟฟิศ เชียงใหม่'}[me&&me.region]; return off?[off].concat(l.filter(function(x){return x!==off;})):l; }   // ออฟฟิศตามภาค บนสุด
+function myHosp(){ var own=HOSP[me.nick]||[], l=own.length?own:ALL_HOSP.slice().sort(new Intl.Collator('th').compare); var off={'กทม.':'ออฟฟิศ กทม.','ภาคกลาง-ภาคตะวันออก':'ออฟฟิศ กทม.','ภาคอีสาน':'ออฟฟิศ ขอนแก่น','ภาคใต้':'ออฟฟิศ หาดใหญ่','ภาคเหนือ':'ออฟฟิศ เชียงใหม่'}[me&&me.region]; return off?[off].concat(l.filter(function(x){return x!==off;})):l; }   // ออฟฟิศตามภาค บนสุด
 // จับคร่าวๆ: ไม่สน "โรงพยาบาล/รพ." ช่องว่าง จุด วงเล็บ
 /* ===== เดาชื่อ รพ. ขณะพิมพ์ — ทุก รพ. (เขตตัวเองขึ้นก่อน) · พิมพ์คร่าวๆ/กลางคำก็เจอ ===== */
 function hnorm(x){ return String(x||'').replace(/โรงพยาบาล|ร\.?พ\.?|คลีนิก|คลินิก|คลีนิค|คลินิค|[\s.()\-]/g,''); }
