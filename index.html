@@ -480,7 +480,7 @@ fHos.addEventListener('input',function(){showHos(fHos.value);});
 document.addEventListener('click',function(e){ if(!e.target.closest('.hos-search')) hosList.classList.add('hidden'); });
 function isOwnHos(h){ return (HOSP[me.nick]||[]).indexOf(h)>-1; }
 // รายชื่อ รพ. ที่ช่วยแนะนำ: มีเขต = เฉพาะเขตตัวเอง · ยังไม่มีเขต (เช่น น้องทดลองงาน) = ทุก รพ.
-function myHosp(){ var own=HOSP[me.nick]||[]; return own.length?own:ALL_HOSP.slice().sort(new Intl.Collator('th').compare); }
+function myHosp(){ var own=HOSP[me.nick]||[], l=own.length?own:ALL_HOSP.slice().sort(new Intl.Collator('th').compare); return me&&me.region==='กทม.'?['ออฟฟิศ กทม.'].concat(l.filter(function(x){return x!=='ออฟฟิศ กทม.';})):l; }   // เซล กทม. มี ออฟฟิศ กทม. บนสุด
 // จับคร่าวๆ: ไม่สน "โรงพยาบาล/รพ." ช่องว่าง จุด วงเล็บ
 /* ===== เดาชื่อ รพ. ขณะพิมพ์ — ทุก รพ. (เขตตัวเองขึ้นก่อน) · พิมพ์คร่าวๆ/กลางคำก็เจอ ===== */
 function hnorm(x){ return String(x||'').replace(/โรงพยาบาล|ร\.?พ\.?|คลีนิก|คลินิก|คลีนิค|คลินิค|[\s.()\-]/g,''); }
@@ -1073,7 +1073,9 @@ function weekNo(ws){ // สัปดาห์ที่ N ของเดือ�
 function ordTh(n){ return n+(n===1?'st':n===2?'nd':n===3?'rd':'th'); }
 function fmtShort(k){ var d=new Date(k+'T00:00:00'); return d.getDate()+' '+MN_SHORT[d.getMonth()]; }
 // รวมรายงานของวันเป็น 1 แถวแบบฟอร์มเดิม
-function byHos(list){ var g={},o=[]; list.forEach(function(r){ var k=(r.hospital||'-').trim(); if(!g[k]){g[k]=[];o.push(k);} g[k].push(r); }); return o.map(function(k){return g[k];}); }
+  function visitKey(r){var m=String(r.desc||r.detail||'').match(/เวลา\s*(\d{1,2})[.:](\d{2})/);if(m)return ('0'+m[1]).slice(-2)+':'+m[2];var t=r.ts||r.savedAt;if(!t)return '99:99';var d=new Date(t);return isNaN(d)?'99:99':('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}   // เวลาไปจริง (จากรายละเอียด) > เวลาที่บันทึก
+function byHos(list){   /* เรียงตามเวลา · ที่เดียวกันติดกัน = รวม · กลับไปที่เดิมอีกรอบ = แถวใหม่ */
+  var out=[]; list.slice().sort(function(a,b){ return visitKey(a).localeCompare(visitKey(b))||String(a.ts||'').localeCompare(String(b.ts||'')); }).forEach(function(r){ var k=(r.hospital||'-').trim(), l=out[out.length-1]; if(l&&l.hos===k) l.push(r); else { var x=[r]; x.hos=k; out.push(x); } }); return out; }
 function openGrpViewer(k,gi,i){ var list=myReports().filter(function(r){return r.workDate===k;}), grp=byHos(list)[gi]||[], all=[]; grp.forEach(function(r){ (r.thumbs||[]).forEach(function(t){ if(t) all.push(t); }); });
   var d=new Date(k+'T00:00:00'); openViewer(all,i,DOW_MON[(d.getDay()+6)%7]+' '+d.getDate()+' '+MN_SHORT[d.getMonth()]+' · '+(grp[0]?grp[0].hospital:'')); }
 function dayRow(list){
@@ -1164,7 +1166,14 @@ function trialMerge(){ try{
   localStorage.setItem('kosin_sales_trial_merged','1');
 }catch(e){} }
 trialMerge();
-function renderMine(){
+/* ===== ดึงรายงานของตัวเองกลับจากระบบ (เปลี่ยนเครื่อง / กรอกคนละที่) ===== */
+var syPullAt=0;
+function syncPull(){ if(!SYNC_URL||!me||Date.now()-syPullAt<300000) return; syPullAt=Date.now();
+  var n=new Date(), from=dkey(new Date(n.getFullYear(),n.getMonth()-3,1));
+  fetch(SYNC_URL+'?op=list&app=sales&from='+from).then(function(r){return r.json();}).then(function(j){ if(!j||!j.ok) return; var a=loadMy(), ids={}, add=0; a.forEach(function(r){ ids[r.id]=1; });
+    j.list.forEach(function(o){ if(o.nick!==me.nick||ids[o.id]) return; var r={}; Object.keys(o).forEach(function(k){ if(k!=='photos') r[k]=o[k]; }); r.ts=o.ts||o.savedAt; r.thumbs=(o.photos||[]).map(function(u){ return String(u).replace('&sz=w1000','&sz=w400'); }); r.photoCount=r.thumbs.length; r.fromServer=1; a.push(r); add++; });
+    if(add){ localStorage.setItem(MY_KEY,JSON.stringify(a)); try{ renderMine(); }catch(e){} } }).catch(function(){}); }
+function renderMine(){ syncPull();
   ensureIds();
   if(!mineWeek) mineWeek=mondayStart(todayStr());
   var ws=mineWeek, we=addDays(ws,6), mine=myReports(), sent=weekSent(ws), thisWs=mondayStart(todayStr());
@@ -1198,7 +1207,7 @@ function renderMine(){
   }
   h+='<div class="btnrow"><button class="send ghost" onclick="printWeeks([mineWeek],\'week\')">'+IC.dl+'PDF · สัปดาห์นี้</button><button class="send ghost" onclick="printMonth()">'+IC.dl+'PDF · ทั้งเดือน</button></div>'
     +'<div class="btnrow"><button class="send ghost" onclick="xlWeek()">📊 Excel · สัปดาห์นี้</button><button class="send ghost" onclick="xlMonth()">📊 Excel · ทั้งเดือน</button></div>';
-  h+=bkRow()+'<div style="background:var(--amber-bg);color:var(--amber);border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.55;margin:8px 0 4px"><b>⚠️ รายงานเก็บอยู่ในเครื่องนี้เท่านั้น</b> — แอปไม่ได้ส่งให้ใคร<br>• โหลด PDF/Excel แล้ว<b>ส่งเมลจากเมลของตัวเอง ทุกสัปดาห์</b><br>• รูปในแอปเก็บแค่ <b>15 วัน</b> — โหลดก่อนรูปหาย<br>• เก็บไฟล์ที่โหลดไว้ในเครื่อง/อีเมลของตัวเองด้วย<br>• <b>เปลี่ยนเครื่อง:</b> กด 💾 สำรองข้อมูล → เครื่องใหม่กด ♻️ กู้คืนข้อมูล</div>';
+  h+=bkRow()+'<div style="background:var(--amber-bg);color:var(--amber);border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.55;margin:8px 0 4px"><b>ℹ️ รายงานเข้าระบบบริษัทแล้ว + มีสำเนาในเครื่องนี้</b> — เปลี่ยนเครื่อง/ล้างเครื่อง แอปดึงรายงานของคุณกลับมาให้เอง (รูปเก็บในระบบ 1 ปี)<br>• โหลด PDF/Excel แล้ว<b>ส่งเมลจากเมลของตัวเอง ทุกสัปดาห์</b><br>• รูปในแอปเก็บแค่ <b>15 วัน</b> — โหลดก่อนรูปหาย<br>• เก็บไฟล์ที่โหลดไว้ในเครื่อง/อีเมลของตัวเองด้วย<br>• <b>เปลี่ยนเครื่อง:</b> กด 💾 สำรองข้อมูล → เครื่องใหม่กด ♻️ กู้คืนข้อมูล</div>';
   document.getElementById('mineBody').innerHTML=h;
 }
 /* ===== แก้ไข / ลบ รายงานที่บันทึกแล้ว (ในเครื่องนี้) ===== */
