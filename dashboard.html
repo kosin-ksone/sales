@@ -120,7 +120,7 @@ function vOverview(){
     list.forEach(s=>{h+='<tr class="click" data-rep="'+esc(s.nick)+'"><td><b>'+esc(s.nick)+'</b> <span style="color:var(--mut);font-size:12px">'+esc(s.full)+'</span></td>'+days.map(k=>{const it=RECS.filter(r=>r.rep===s.nick&&r.workDate===k),dd=kd(k).getDay();
         if(k>TODAY)return '<td class="n"></td>';if(it.length)return '<td class="n"><span class="chip '+(it.some(r=>r.lateDays)?'c-late':'c-ok')+'">'+it.length+'</span></td>';
         return '<td class="n">'+(dd===0||dd===6?'<span class="chip c-no">หยุด</span>':'<span class="chip c-off">–</span>')+'</td>';}).join('')+'<td class="n">'+(RECS.filter(r=>r.rep===s.nick&&inMonth(r)).length||'')+'</td></tr>';});});
-  h+='</table><div style="font-size:11.5px;color:var(--mut);margin-top:6px">ตัวเลข = จำนวนรายงาน · <span class="chip c-late">2</span> = มีส่งสาย · – = ไม่มีรายงาน · แตะชื่อเพื่ออ่านรายงานของคนนั้น</div></div>';
+  h+='</table><div style="font-size:11.5px;color:var(--mut);margin-top:6px;line-height:2"><span class="chip c-ok">2</span> = ส่งตรงวัน · <span class="chip c-late">2</span> = ส่งสาย (ส่งย้อนหลัง หลังวันที่ทำงาน) · <span class="chip c-off">–</span> = ไม่มีรายงาน · <span class="chip c-no">หยุด</span> = เสาร์–อาทิตย์ · ตัวเลข = จำนวนรายงาน · แตะชื่อเพื่ออ่านรายงานของคนนั้น</div></div>';
   $('#view').innerHTML=h;
   document.querySelectorAll('[data-rep]').forEach(tr=>tr.onclick=()=>{fRep=tr.dataset.rep;go('rp');});
 }
