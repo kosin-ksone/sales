@@ -194,7 +194,7 @@
     <div class="goldline"></div>
     <p>เลือกชื่อของคุณเพื่อเริ่ม</p>
     <div id="namelist"></div>
-    <div class="ver"><b>v2.2</b> · 29 ต.ค. 69</div>
+    <div class="ver"><b>v2.3</b> · 29 ต.ค. 69</div>
   </div>
 
   <!-- ========== APP ========== -->
@@ -276,24 +276,24 @@
 
       <div class="hidden" id="extraCard"><div id="extraFields"></div></div>
 
-      <div class="ver"><b>v2.2</b> · 29 ต.ค. 69</div>
+      <div class="ver"><b>v2.3</b> · 29 ต.ค. 69</div>
     </div>
 
     <!-- ========== แพลนงาน ========== -->
     <div class="body hidden" id="tabPlan">
       <div id="planBody"></div>
-      <div class="ver"><b>v2.2</b> · 29 ต.ค. 69</div>
+      <div class="ver"><b>v2.3</b> · 29 ต.ค. 69</div>
     </div>
 
     <!-- ========== รายงานของฉัน ========== -->
     <div class="body hidden" id="tabMine">
       <div id="mineBody"></div>
-      <div class="ver"><b>v2.2</b> · 29 ต.ค. 69</div>
+      <div class="ver"><b>v2.3</b> · 29 ต.ค. 69</div>
     </div>
 
     <div class="body hidden" id="tabTech">
       <div id="techBody"></div>
-      <div class="ver"><b>v2.2</b> · 29 ต.ค. 69</div>
+      <div class="ver"><b>v2.3</b> · 29 ต.ค. 69</div>
     </div>
 
     <div class="bar" id="reportBar">
@@ -318,7 +318,7 @@
     <button class="send navy" style="max-width:280px;margin:0 auto" onclick="newReport()">+ บันทึกเพิ่ม (วันเดียวกัน)</button>
     <button class="send ghost" style="max-width:280px;margin:10px auto 0" onclick="goMine()">ดูรายงานของฉัน</button>
     <button class="send ghost" style="max-width:280px;margin:10px auto 0" onclick="printReport()">แชร์รายงานนี้</button>
-    <div class="ver"><b>v2.2</b> · 29 ต.ค. 69</div>
+    <div class="ver"><b>v2.3</b> · 29 ต.ค. 69</div>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -383,7 +383,7 @@ function applyTheme(){
   if(th.bg){ set('--bg',th.bg); }
 }
 applyTheme();
-if(!CFG.SUBMIT_URL) document.getElementById('testbadge').classList.remove('hidden');
+if(!CFG.SUBMIT_URL&&!(CFG.SYNC_URL&&!CFG.TRIAL)) document.getElementById('testbadge').classList.remove('hidden');   // ต่อหลังบ้านแล้ว = ไม่ใช่โหมดทดลอง (พี่ฝน 29 ต.ค. 69)
 var PHOTO_MAX = CFG.PHOTO_MAX || 20;
 var VERSION = 'v2.0 · 24 ต.ค. 69';
 // ไอคอนเส้น (SVG) ที่ใช้ซ้ำ
@@ -808,7 +808,7 @@ function submitOne(silent){
 
   if(silent){ if(CFG.SUBMIT_URL) fetch(CFG.SUBMIT_URL,{method:'POST',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain;charset=utf-8'}}).catch(function(){}); return true; }
   if(!CFG.SUBMIT_URL){ // test mode
-    setTimeout(function(){ done('บันทึกในเครื่องแล้ว (โหมดทดลอง) — วันนี้ '+dayCount+' งาน'); },500);
+    setTimeout(function(){ done(((CFG.SYNC_URL&&!CFG.TRIAL)?'บันทึกแล้ว':'บันทึกในเครื่องแล้ว (โหมดทดลอง)')+' — วันนี้ '+dayCount+' งาน'); },500);
     return;
   }
   // real mode — JSONP-style POST
