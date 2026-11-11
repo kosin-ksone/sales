@@ -446,7 +446,7 @@ function pick(nick){
   localStorage.setItem('kosin_sales_me', nick);
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('whoName').textContent = me.full;
+  document.getElementById('whoName').textContent = (me.full+(me.nick?' ('+me.nick+')':''));
   document.getElementById('whoReg').textContent = me.region; setTimeout(function(){ bellPull(true); },1500);
   // zones
   if(me.work){
@@ -1242,10 +1242,10 @@ function draftMail(){
   if(!me){ toast('เลือกชื่อก่อนนะคะ'); return; }
   var ws=mineWeek||mondayStart(), we=addDays(ws,6), yy=function(k){ return String((+k.slice(0,4)+543)%100); };
   var rng=fmtShort(ws)+' – '+fmtShort(we)+' '+yy(we), nws=addDays(ws,7), nrng=fmtShort(nws)+' – '+fmtShort(addDays(nws,6))+' '+yy(addDays(nws,6));
-  var sub='รายงานผู้แทน · '+me.nick+' ('+me.full+') · สัปดาห์ '+rng;
+  var sub='รายงานผู้แทน · '+me.full+' ('+me.nick+') · สัปดาห์ '+rng;
   // แพลนไม่บังคับทุกคน — ใส่ประโยคแพลนเฉพาะคนที่มีแพลนสัปดาห์หน้าในแอป
   var hasPlan=false; for(var i=0;i<7&&!hasPlan;i++){ var sl=planOfDay(addDays(nws,i)); hasPlan=Object.keys(sl).some(function(k){ var v=sl[k]; if(!v) return false; if(typeof v==='object') v=v.hospital||v.text||v.detail||''; return String(v).trim()!==''; }); }
-  var body='เรียน คุณโกสีห์ (KOSIE)\n\nขอส่งรายงานการทำงานประจำสัปดาห์ '+rng+' ของ '+me.full+' ('+me.nick+')'+(hasPlan?' และแพลนงานสัปดาห์หน้า ('+nrng+')':'')+' ตามไฟล์แนบครับ\n\n'+me.full+'\nผู้แทนขาย KOSIN';
+  var body='เรียน คุณโกสีห์ (KOSIE)\n\nขอส่งรายงานการทำงานประจำสัปดาห์ '+rng+' ของ '+me.full+' ('+me.nick+')'+(hasPlan?' และแพลนงานสัปดาห์หน้า ('+nrng+')':'')+' ตามไฟล์แนบครับ\n\n'+me.full+' ('+me.nick+')\nผู้แทนขาย KOSIN';
   location.href='mailto:'+MAIL_TO_SALES+'?cc='+encodeURIComponent(MAIL_CC_SALES)+'&subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body);
   setTimeout(function(){ showModal('อย่าลืมแนบไฟล์นะคะ','แอปเมลเปิดพร้อมข้อความแล้ว — แนบ <b>รายงานสัปดาห์ (PDF)</b>'+(hasPlan?' และ <b>แพลนสัปดาห์หน้า (Excel)</b>':'')+' ที่โหลดไว้ แล้วกดส่งจากเมลของตัวเอง',[{label:'รับทราบ',cls:'navy'}]); },800);
 }
@@ -1318,7 +1318,7 @@ function renderMine(){ syncPull();
   var inWeek=mine.filter(function(r){ return r.workDate>=ws && r.workDate<=we; });
   var d0=new Date(ws+'T00:00:00');
   var h='<div class="hero"><div class="t">รายงานการทำงาน · สัปดาห์ที่ '+weekNo(ws)+' เดือน '+MN_FULL[d0.getMonth()]+' '+(d0.getFullYear()+543)+'</div>'
-    +'<div class="n">'+esc(me.full)+'</div><div class="s">'+inWeek.length+' รายงาน · '+inWeek.reduce(function(a,r){return a+(r.photoCount||0);},0)+' รูป</div>'
+    +'<div class="n">'+esc((me.full+(me.nick?' ('+me.nick+')':'')))+'</div><div class="s">'+inWeek.length+' รายงาน · '+inWeek.reduce(function(a,r){return a+(r.photoCount||0);},0)+' รูป</div>'
     +'</div>';
   h+='<div class="wknav"><button class="wkbtn" onclick="mineNav(-1)">‹</button><div class="c"><b>'+fmtShort(ws)+' – '+fmtShort(we)+' '+(new Date(we+'T00:00:00').getFullYear()+543)+'</b><small>'+(ws===thisWs?'สัปดาห์นี้':(ws>thisWs?'สัปดาห์หน้า':'ผ่านมาแล้ว'))+' · จันทร์–อาทิตย์</small></div><button class="wkbtn" onclick="mineNav(1)">›</button></div>';
   if(sent) h+='<div class="sentbox">🔒 ส่งสัปดาห์นี้แล้ว '+new Date(sent).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' · ปิดสัปดาห์ (กำลังตรวจ)</div>';
@@ -1399,7 +1399,7 @@ function renderHero(){
   var k=fDate.value||todayStr(), ws=mondayStart(k), d=new Date(k+'T00:00:00'), sent=weekSent(ws);
   var n=myReports().filter(function(r){ return r.workDate>=ws && r.workDate<=addDays(ws,6); }).length;
   el.innerHTML='<div class="t">'+DOW_MON[(d.getDay()+6)%7]+' '+d.getDate()+' '+MN_FULL[d.getMonth()]+' '+(d.getFullYear()+543)+'</div>'
-    +'<div class="n">สวัสดีค่ะ คุณ'+esc(me.nick||me.full)+'</div>'
+    +'<div class="n">สวัสดีค่ะ คุณ'+esc((me.full+(me.nick?' ('+me.nick+')':'')))+'</div>'
     +'<div class="s">สัปดาห์ที่ '+weekNo(ws)+' · บันทึกแล้ว '+n+' รายงาน</div>'
     +'';
 }
@@ -1434,7 +1434,7 @@ function printWeeks(weeks,mode,mo,yr,onlyK){
       });
     }
     var dK=onlyK?new Date(onlyK+'T00:00:00'):null;
-    pages+='<section class="pg"><div class="h">'+(mode==='day'?('รายงานการทำงานประจำวัน <u>&nbsp;&nbsp;วัน'+DOW_MON[(dK.getDay()+6)%7]+'ที่ '+dK.getDate()+' '+MN_FULL[dK.getMonth()]+' '+(dK.getFullYear()+543)+'&nbsp;&nbsp;</u>'):('รายงานการทำงานสัปดาห์ที่ <u>&nbsp;&nbsp;'+ordTh(mode==='month'?wi+1:weekNo(ws))+'&nbsp;&nbsp;</u> เดือน <u>&nbsp;&nbsp;'+MN_FULL[mm]+' '+(yy+543)+'&nbsp;&nbsp;</u>'))+' ชื่อผู้ปฏิบัติงาน <u>&nbsp;&nbsp;'+esc(me.full)+'&nbsp;&nbsp;</u></div>'
+    pages+='<section class="pg"><div class="h">'+(mode==='day'?('รายงานการทำงานประจำวัน <u>&nbsp;&nbsp;วัน'+DOW_MON[(dK.getDay()+6)%7]+'ที่ '+dK.getDate()+' '+MN_FULL[dK.getMonth()]+' '+(dK.getFullYear()+543)+'&nbsp;&nbsp;</u>'):('รายงานการทำงานสัปดาห์ที่ <u>&nbsp;&nbsp;'+ordTh(mode==='month'?wi+1:weekNo(ws))+'&nbsp;&nbsp;</u> เดือน <u>&nbsp;&nbsp;'+MN_FULL[mm]+' '+(yy+543)+'&nbsp;&nbsp;</u>'))+' ชื่อผู้ปฏิบัติงาน <u>&nbsp;&nbsp;'+esc((me.full+(me.nick?' ('+me.nick+')':'')))+'&nbsp;&nbsp;</u></div>'
       +'<table><thead><tr><th style="width:9%">ประจำวัน</th><th style="width:12%">ไปที่ไหน</th><th style="width:12%">ทำอะไร</th><th style="width:33%">รายละเอียด</th><th style="width:12%">ปัญหาและแนวทางแก้ไข</th><th style="width:22%">ภาพประกอบ</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
   });
   var css='<style>@page{size:A4 landscape;margin:10mm}'
@@ -1449,7 +1449,7 @@ function printWeeks(weeks,mode,mo,yr,onlyK){
     +'.more{font-size:10px;color:#555}'
     +'.bar{position:sticky;top:0;background:#0B1F4D;padding:8px;display:flex;gap:8px}.bar button{flex:1;padding:10px;border:1px solid #C9A24A;border-radius:8px;font-weight:700;font-size:14px}'
     +'@media print{.bar{display:none}}</style>';
-  var title=(mode==='month'?'รายงานรายเดือน':mode==='day'?'รายงานรายวัน':'รายงานรายสัปดาห์')+' · '+me.full;
+  var title=(mode==='month'?'รายงานรายเดือน':mode==='day'?'รายงานรายวัน':'รายงานรายสัปดาห์')+' · '+(me.full+(me.nick?' ('+me.nick+')':''));
   var w=printWin();
   if(!w){ toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต pop-up ก่อนนะคะ'); return; }
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title>'+css+'</head><body>'
@@ -1472,14 +1472,14 @@ function planOfDay(k){ var a=(loadPlans()[me.nick])||{}; return slotsOf((a[sunda
 function printPlan(sun){   // ฟอร์มแพลนเดิม (xlsx): อาทิตย์–เสาร์ แนวนอน · เช้า/บ่าย · วันหยุดเหลือง
   var cellsOf=function(k){var p=planOfDay(k);return [esc(p['เช้า']||'').replace(/\n/g,'<br>'),esc(p['บ่าย']||'').replace(/\n/g,'<br>')];};
   var dows=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'],mm=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  var r1='<tr><th></th>',r2='<tr><th></th>',r3='<tr><td class="nm">'+esc(me.full)+'</td>',rm='<tr class="sl"><td>เช้า</td>',ra='<tr class="sl"><td>บ่าย</td>';
+  var r1='<tr><th></th>',r2='<tr><th></th>',r3='<tr><td class="nm">'+esc((me.full+(me.nick?' ('+me.nick+')':'')))+'</td>',rm='<tr class="sl"><td>เช้า</td>',ra='<tr class="sl"><td>บ่าย</td>';
   for(var i=0;i<7;i++){var k=addDays(sun,i),dd=new Date(k+'T00:00:00'),c=cellsOf(k),off=function(k){return isHoliday(k).off;}(k);
     r1+='<th>'+dows[i]+'</th>';r2+='<th>'+dd.getDate()+'-'+mm[dd.getMonth()]+'-'+String(dd.getFullYear()%100).padStart(2,'0')+'</th>';r3+='<td></td>';
     rm+=c[0]?'<td>'+c[0]+'</td>':(off?'<td class="off">หยุด</td>':'<td></td>');
     ra+=c[1]?'<td>'+c[1]+'</td>':(off?'<td class="off">หยุด</td>':'<td></td>');}
   var w=printWin();
   if(!w){toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต pop-up ก่อนนะคะ');return;}
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>แพลนงาน '+esc(me.full)+'</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Tahoma,"Leelawadee UI",Sarabun,sans-serif;font-size:13px;color:#000;margin:0}table.pl{border-collapse:collapse;width:100%;table-layout:fixed}.pl th,.pl td{border:1px solid #000;padding:6px 4px;text-align:center;vertical-align:middle;word-wrap:break-word;font-weight:400}.pl thead th{border-color:#bbb}.pl td.nm{background:#E7E6E6;text-align:left;padding-left:8px}.pl tr.sl td{height:110px}.pl td.off{background:#FFFF00}.bar{position:sticky;top:0;padding:8px;display:flex;gap:8px}.bar button{flex:1;padding:10px;border-radius:8px;font-weight:700;font-size:14px}@media print{.bar{display:none}}</style></head><body>'
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>แพลนงาน '+esc((me.full+(me.nick?' ('+me.nick+')':'')))+'</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Tahoma,"Leelawadee UI",Sarabun,sans-serif;font-size:13px;color:#000;margin:0}table.pl{border-collapse:collapse;width:100%;table-layout:fixed}.pl th,.pl td{border:1px solid #000;padding:6px 4px;text-align:center;vertical-align:middle;word-wrap:break-word;font-weight:400}.pl thead th{border-color:#bbb}.pl td.nm{background:#E7E6E6;text-align:left;padding-left:8px}.pl tr.sl td{height:110px}.pl td.off{background:#FFFF00}.bar{position:sticky;top:0;padding:8px;display:flex;gap:8px}.bar button{flex:1;padding:10px;border-radius:8px;font-weight:700;font-size:14px}@media print{.bar{display:none}}</style></head><body>'
     +'<div class="bar" style="background:#0B1F4D"><button onclick="window.print()" style="background:#C4271C;color:#fff;border:1px solid #C9A24A">⬇ บันทึกเป็น PDF / พิมพ์</button><button onclick="window.close()">ปิด</button></div>'
     +'<div style="padding:10px"><table class="pl"><thead>'+r1+'</tr>'+r2+'</tr></thead><tbody>'+r3+'</tr>'+rm+'</tr>'+ra+'</tr></tbody></table></div></body></html>');
   w.document.close();setTimeout(function(){try{w.focus();w.print();}catch(e){}},600);
