@@ -3,7 +3,7 @@
    ส่งออก Excel ตามฟอร์มบริษัทเดิม 2 ไฟล์ (tpl_travel.xlsx · tpl_car.xlsx) แก้ไขต่อได้ · เซลส่งบัญชีเองเหมือนเดิม
    ข้อมูลเก็บในเครื่อง (kosin_sales_exp_*) + อยู่ในไฟล์สำรองข้อมูลของแอป */
 (function(){
-var EXP_VER='v1.1 · 15 พ.ย. 69';
+var EXP_VER='v1.2 · 15 พ.ย. 69';
 var VEH={P:'รถส่วนตัว',C:'รถบริษัท',M:'มอเตอร์ไซค์',O:'ไปกับคนอื่น'}, VCOL={C:5,P:6,M:7,O:8};
 var ALW=[['n','ไม่มี',0,0],['h','ครึ่งวัน 100',100,0],['f','เต็มวัน 200',200,0],['hh','วันหยุดครึ่งวัน 300',0,300],['hf','วันหยุดเต็มวัน 600',0,600]];
 var LABELS=['วันหยุด','วันหยุดนักขัต','ลาพักร้อน','ลาป่วย','ลากิจ','ทำงานในเขต center','เข้าออฟฟิศ'];
@@ -275,7 +275,7 @@ window.expRmBill=function(i){ st.car.fuel.splice(i,1); save(); render(); };
 /* ---------- ส่งออก Excel ตามฟอร์มเดิม ---------- */
 var XJ='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
 function needExcelJS(){ return window.ExcelJS?Promise.resolve():new Promise(function(res,rej){ var s=document.createElement('script'); s.src=XJ; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
-function tpl(name){ return fetch(name+'?v=1').then(function(r){ if(!r.ok) throw 0; return r.arrayBuffer(); }).then(function(b){ var wb=new ExcelJS.Workbook(); return wb.xlsx.load(b).then(function(){ return wb; }); }); }
+function tpl(name){ return fetch(name+'?v=2').then(function(r){ if(!r.ok) throw 0; return r.arrayBuffer(); }).then(function(b){ var wb=new ExcelJS.Workbook(); return wb.xlsx.load(b).then(function(){ return wb; }); }); }
 function busy(on){ var b=document.getElementById('xdlBtn'); if(!b) return; b.disabled=on; b.classList.toggle('xbusy',on); if(on){ b.dataset.t=b.textContent; b.textContent='กำลังทำไฟล์ Excel…'; } else if(b.dataset.t) b.textContent=b.dataset.t; }
 function dl(wb,fname){ return wb.xlsx.writeBuffer().then(function(buf){ var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); window.__expLast=blob; if(window.__expNoDl) return; var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },5000); toast('ได้ไฟล์ Excel แล้ว'); }); }
 function F(ws,addr,formula,result){ ws.getCell(addr).value={formula:formula,result:result}; }
@@ -332,6 +332,7 @@ window.expXlsxCar=function(){
     [['toll','I4'],['park','I5'],['oil','I6'],['tire','I7'],['ins','I8'],['repair','I9']].forEach(function(f){ ws.getCell(f[1]).value=num(c[f[0]])||null; });
     ws.getCell('C10').value=c.note||null;
     F(ws,'C11','SUM(I3:I10)',cc.tot);
+    ws.pageSetup.printArea='A1:I'+(c.ph1||c.ph2?28:12); ws.pageSetup.fitToPage=true; ws.pageSetup.fitToWidth=1; ws.pageSetup.fitToHeight=1;   // พิมพ์ 1 หน้า (เดิมพิมพ์ออก 51 หน้าว่าง)
     [['ph1',0],['ph2',5]].forEach(function(x){ var s=c[x[0]]; if(!s) return; var id=wb.addImage({base64:s,extension:'jpeg'}); ws.addImage(id,{tl:{col:x[1],row:11},ext:{width:x[1]?320:300,height:240}}); });
     wb.calcProperties.fullCalcOnLoad=true;
     return dl(wb,'ค่าใช้จ่ายรถ '+me.full+' '+MN[m]+' '+(y+543)+'.xlsx');
