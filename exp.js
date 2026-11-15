@@ -3,7 +3,7 @@
    ส่งออก Excel ตามฟอร์มบริษัทเดิม 2 ไฟล์ (tpl_travel.xlsx · tpl_car.xlsx) แก้ไขต่อได้ · เซลส่งบัญชีเองเหมือนเดิม
    ข้อมูลเก็บในเครื่อง (kosin_sales_exp_*) + อยู่ในไฟล์สำรองข้อมูลของแอป */
 (function(){
-var EXP_VER='v1.2 · 15 พ.ย. 69';
+var EXP_VER='v1.3 · 15 พ.ย. 69';
 var VEH={P:'รถส่วนตัว',C:'รถบริษัท',M:'มอเตอร์ไซค์',O:'ไปกับคนอื่น'}, VCOL={C:5,P:6,M:7,O:8};
 var ALW=[['n','ไม่มี',0,0],['h','ครึ่งวัน 100',100,0],['f','เต็มวัน 200',200,0],['hh','วันหยุดครึ่งวัน 300',0,300],['hf','วันหยุดเต็มวัน 600',0,600]];
 var LABELS=['วันหยุด','วันหยุดนักขัต','ลาพักร้อน','ลาป่วย','ลากิจ','ทำงานในเขต center','เข้าออฟฟิศ'];
@@ -100,7 +100,7 @@ window.openExpense=function(ym){
   try{ syncPull(); }catch(e){}
   if(!document.getElementById('expCss')) document.head.insertAdjacentHTML('beforeend',CSS);
   var n=new Date(); expYM=ym||expYM||(n.getDate()<=10? dkey(new Date(n.getFullYear(),n.getMonth()-1,1)) : dkey(n)).slice(0,7);
-  load();
+  load(); setTimeout(mileRetry,1500);
   var o=document.getElementById('expOv'); if(!o){ o=document.createElement('div'); o.id='expOv'; document.body.appendChild(o); }
   document.body.style.overflow='hidden';
   try{ history.pushState(Object.assign({},history.state||{},{exp:1}),''); }catch(e){}
@@ -267,7 +267,14 @@ function carHtml(P){
 }
 function phBox(f,t,src){ return '<div><label class="xph">'+(src?'<img src="'+src+'"><span class="ok">✓ '+t+'</span>':'<span style="font-size:26px">📷</span>ถ่ายรูปไมล์<br>'+t)
   +'<input type="file" accept="image/*" capture="environment" hidden onchange="expPhoto(\''+f+'\',this)"></label></div>'; }
-window.expPhoto=function(f,inp){ var file=inp.files&&inp.files[0]; if(!file) return; var r=new FileReader(); r.onload=function(){ resizeDataURL(r.result,1000,0.7).then(function(d){ st.car[f]=d; if(!save()){ st.car[f]=''; } render(); }); }; r.readAsDataURL(file); };
+/* รูปไมล์ → ระบบ (วันที่ถ่าย/พิกัดจากรูป · ธงให้บัญชีดูคนเดียว เซลไม่เห็น) · 15 พ.ย. 69 */
+function sHash(s){ var h=0; for(var i=0;i<s.length;i+=7) h=(h*31+s.charCodeAt(i))|0; return (h>>>0).toString(36)+'_'+s.length; }
+function mileUp(f,withImg){ var c=st.car; if(!window.SYNC_URL||!c[f]) return; var ym=expYM, body={app:'sales',op:'expphoto',nick:me.nick,full:me.full,ym:ym,which:f==='ph2'?'end':'start',mile:f==='ph2'?c.mEnd:c.mStart,taken:c[f+'At']||'',gps:c[f+'Gps']||'',hash:c[f+'H']||''};
+  if(withImg) body.img=c[f];
+  fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(j){ if(j&&j.ok&&withImg){ var s2=LS('kosin_sales_exp_'+me.nick+'_'+ym,null); if(s2&&s2.car){ s2.car[f+'Up']=1; SS('kosin_sales_exp_'+me.nick+'_'+ym,s2); } if(ym===expYM) st.car[f+'Up']=1; } }).catch(function(){}); }
+function mileRetry(){ ['ph1','ph2'].forEach(function(f){ if(st.car[f]&&!st.car[f+'Up']) mileUp(f,true); }); }
+window.expPhoto=function(f,inp){ var file=inp.files&&inp.files[0]; if(!file) return; var rb=new FileReader(); rb.onload=function(){ var ex={}; try{ ex=parseExif(rb.result)||{}; }catch(e){} st.car[f+'At']=ex.taken||''; st.car[f+'Gps']=ex.gps?(ex.gps.lat!=null?ex.gps.lat.toFixed(5)+','+ex.gps.lng.toFixed(5):String(ex.gps)):''; doResize(); }; rb.readAsArrayBuffer(file);
+  function doResize(){ var r=new FileReader(); r.onload=function(){ resizeDataURL(r.result,1000,0.7).then(function(d){ st.car[f]=d; st.car[f+'H']=sHash(d); st.car[f+'Up']=0; if(!save()){ st.car[f]=''; } render(); mileUp(f,true); }); }; r.readAsDataURL(file); } };
 window.expCar=function(f,v){ st.car[f]=v; save(); var cc=carCalc(), a=document.getElementById('xcTot'); if(a) a.textContent=money(cc.tot)+' บาท'; var b=document.getElementById('xcRun'); if(b) b.textContent=cc.run>0?cc.run.toLocaleString('th-TH')+' กม.':'-'; };
 window.expAddBill=function(){ var el=document.getElementById('xBill'), v=num(el.value); if(!(v>0)){ el.focus(); return; } st.car.fuel.push(v); save(); render(); setTimeout(function(){ var e=document.getElementById('xBill'); if(e) e.focus(); },30); };
 window.expRmBill=function(i){ st.car.fuel.splice(i,1); save(); render(); };
@@ -335,6 +342,7 @@ window.expXlsxCar=function(){
     ws.pageSetup.printArea='A1:I'+(c.ph1||c.ph2?28:12); ws.pageSetup.fitToPage=true; ws.pageSetup.fitToWidth=1; ws.pageSetup.fitToHeight=1;   // พิมพ์ 1 หน้า (เดิมพิมพ์ออก 51 หน้าว่าง)
     [['ph1',0],['ph2',5]].forEach(function(x){ var s=c[x[0]]; if(!s) return; var id=wb.addImage({base64:s,extension:'jpeg'}); ws.addImage(id,{tl:{col:x[1],row:11},ext:{width:x[1]?320:300,height:240}}); });
     wb.calcProperties.fullCalcOnLoad=true;
+    ['ph1','ph2'].forEach(function(f){ if(c[f]) mileUp(f,!c[f+'Up']); });   // ส่งเลขไมล์ล่าสุดให้บัญชี
     return dl(wb,'ค่าใช้จ่ายรถ '+me.full+' '+MN[m]+' '+(y+543)+'.xlsx');
   }).catch(function(){ toast('ทำไฟล์ไม่สำเร็จ ลองใหม่อีกครั้ง'); }).then(function(){ busy(false); });
 };
