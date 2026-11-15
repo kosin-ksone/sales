@@ -3,7 +3,7 @@
    ส่งออก Excel ตามฟอร์มบริษัทเดิม 2 ไฟล์ (tpl_travel.xlsx · tpl_car.xlsx) แก้ไขต่อได้ · เซลส่งบัญชีเองเหมือนเดิม
    ข้อมูลเก็บในเครื่อง (kosin_sales_exp_*) + อยู่ในไฟล์สำรองข้อมูลของแอป */
 (function(){
-var EXP_VER='v1.0 · 15 พ.ย. 69';
+var EXP_VER='v1.1 · 15 พ.ย. 69';
 var VEH={P:'รถส่วนตัว',C:'รถบริษัท',M:'มอเตอร์ไซค์',O:'ไปกับคนอื่น'}, VCOL={C:5,P:6,M:7,O:8};
 var ALW=[['n','ไม่มี',0,0],['h','ครึ่งวัน 100',100,0],['f','เต็มวัน 200',200,0],['hh','วันหยุดครึ่งวัน 300',0,300],['hf','วันหยุดเต็มวัน 600',0,600]];
 var LABELS=['วันหยุด','วันหยุดนักขัต','ลาพักร้อน','ลาป่วย','ลากิจ','ทำงานในเขต center','เข้าออฟฟิศ'];
@@ -21,7 +21,15 @@ function kMon(){ return 'kosin_sales_exp_'+me.nick+'_'+expYM; }
 var K_ROUTE='kosin_sales_routes';
 window.EXP_IS_UPC=function(){ return !!(window.me&&me.region&&me.region!=='กทม.'); };   // เซล ตจว.
 
-function prof(){ var p=LS(kProf(),null); if(!p){ var c=String(me.work||(me.home||[])[0]||'').split(/\s*และ\s*|,/)[0].trim(); p={center:c,veh:'P',plate:'',home:c?'บ้าน'+c:'บ้าน',homeAt:''}; } return p; }
+function prof(){ var p=LS(kProf(),null), mh=(me.home||[]).filter(Boolean);
+  if(!p){ var c=String(me.work||mh[0]||'').split(/\s*และ\s*|,/)[0].trim(); p={center:c,veh:'P',plate:''}; }
+  if(!p.homes){ var hs=mh.length?mh.slice(0,2):[p.center||'']; p.homes=hs.map(function(x,i){ return {name:(i===0&&p.home)?p.home:('บ้าน'+String(x).trim()),at:(i===0&&p.homeAt)||''}; }); }
+  while(p.homes.length<2) p.homes.push({name:'',at:''});
+  p.home=p.homes[0].name; return p; }   // ฐานบ้าน 2 ที่ (เซล ตจว.) · home = บ้านหลัก
+function homeNames(P){ return P.homes.map(function(h){return String(h.name||'').trim();}).filter(Boolean); }
+function isHome(x,P){ return homeNames(P).indexOf(String(x||'').trim())>-1; }
+function homeAt(x,P){ var h=P.homes.filter(function(h){ return String(h.name||'').trim()===String(x||'').trim(); })[0]; return h?h.at:''; }
+function nearHome(place,P){ var pv=provOf(place), hs=homeNames(P); for(var i=0;i<hs.length;i++){ if(pv&&hs[i].indexOf(pv)>-1) return hs[i]; } return ''; }
 function saveProf(p){ SS(kProf(),p); }
 function provOf(h){ var z=(window.ZONE_INFO||{})[h]; return z&&z.p?String(z.p).replace(/^กทม$/,'กรุงเทพ'):''; }
 function inCenter(pv,c){ if(!pv||!c) return true; return String(c).indexOf(pv)>-1||pv.indexOf(String(c).replace(/^บ้าน/,''))>-1; }
@@ -39,13 +47,13 @@ function isHotel(s){ return /โรงแรม|hotel|รีสอร์ท|reso
 
 /* วันจากรายงาน (ยังไม่เคยแก้) */
 function reportPlaces(k){ var seen={}, out=[]; myReports().filter(function(r){return r.workDate===k;}).sort(function(a,b){return String(a.ts||'')<String(b.ts||'')?-1:1;}).forEach(function(r){ var h=String(r.hospital||'').trim(); if(h&&!seen[h]){ seen[h]=1; out.push(h); } }); return out; }
-function prevEnd(k){ var p=addDays(k,-1), d=st.days[p]; if(d&&d.legs&&d.legs.length){ var t=d.legs[d.legs.length-1].to; if(isHotel(t)) return t; } return ''; }
-function autoDay(k){
+function prevEnd(k,depth){ var p=addDays(k,-1); if(p.slice(0,7)!==expYM||(depth||0)>31) return ''; var d=st.days[p]||autoDay(p,(depth||0)+1); if(d&&d.legs&&d.legs.length){ var t=d.legs[d.legs.length-1].to; if(isHotel(t)||isHome(t,prof())) return t; } return prevEnd(p,(depth||0)+1); }
+function autoDay(k,depth){
   var P=prof(), pl=reportPlaces(k), hol=isHoliday(k), d={auto:true,veh:P.veh,label:'',start:'',legs:[],alw:'n',hotel:'',other:'',otherNote:''};
   if(!pl.length){ d.label=hol.off?'วันหยุด':''; return d; }
-  d.start=prevEnd(k)||P.home;
+  d.start=prevEnd(k,depth)||P.home;
   var from=d.start; pl.slice(0,MAXLEG-1).forEach(function(h){ d.legs.push({to:h,km:kmGuess(from,h)}); from=h; });
-  d.legs.push({to:P.home,km:kmGuess(from,P.home)});
+  var back=nearHome(from,P)||(isHome(d.start,P)?d.start:P.home); d.legs.push({to:back,km:kmGuess(from,back)});
   var out=pl.some(function(h){ return !inCenter(provOf(h),P.center); });
   if(out) d.alw=hol.off?'hf':'f';
   return d;
@@ -88,7 +96,7 @@ var CSS='<style id="expCss">'
  +'</style>';
 
 window.openExpense=function(ym){
-  if(!window.me) return;
+  if(!window.me) return; setupSkip=false;
   try{ syncPull(); }catch(e){}
   if(!document.getElementById('expCss')) document.head.insertAdjacentHTML('beforeend',CSS);
   var n=new Date(); expYM=ym||expYM||(n.getDate()<=10? dkey(new Date(n.getFullYear(),n.getMonth()-1,1)) : dkey(n)).slice(0,7);
@@ -104,9 +112,34 @@ window.expClose=function(){ closeExp(false); };
 window.expMon=function(dl){ var p=expYM.split('-'), d=new Date(+p[0],+p[1]-1+dl,1); expYM=dkey(d).slice(0,7); load(); render(); };
 window.expSetTab=function(t){ expTab=t; render(); };
 
+/* ---------- ตั้งค่าครั้งแรก: บันทึกบ้าน 2 ที่ (พี่ฝน 15 พ.ย. 69) ---------- */
+var setupSkip=false;
+function needSetup(P){ return !P.setupDone && P.homes.some(function(h){ return String(h.name||'').trim()&&!h.at; }); }
+function parseLoc(s){ s=String(s||'').trim(); var m=s.match(/@(-?\d{1,2}\.\d+),\s*(-?\d{2,3}\.\d+)/)||s.match(/[?&](?:q|query|ll|destination)=(-?\d{1,2}\.\d+)(?:,|%2C)\s*(-?\d{2,3}\.\d+)/i)||s.match(/^(-?\d{1,2}\.\d+)\s*,\s*(-?\d{2,3}\.\d+)$/);
+  return m?(+m[1]).toFixed(5)+','+(+m[2]).toFixed(5):s; }   // ลิงก์ Google Maps / lat,lng → พิกัด · ที่อยู่ → เก็บข้อความ (หลังบ้านหาพิกัดให้)
+function setupHtml(P){
+  var h='<div class="hero"><div class="t">ตั้งค่าครั้งแรก</div><div class="n">บันทึกบ้าน 2 ที่</div><div class="s">ใช้หาระยะจากบ้านไป รพ. ให้อัตโนมัติ · ทำครั้งเดียว</div></div>';
+  P.homes.forEach(function(x,i){
+    var ok=!!x.at, isCo=/^-?\d+\.\d+,-?\d+\.\d+$/.test(x.at||'');
+    h+='<div class="card"><div class="lbl"><span class="dot"></span>ฐานบ้านที่ '+(i+1)+(i?' <span style="font-weight:400;color:var(--mut)">(ถ้ามี)</span>':'')+(ok?' <span class="xtag ok" style="margin-left:auto">✓ บันทึกแล้ว</span>':'')+'</div>'
+      +'<input class="field" value="'+E(x.name)+'" placeholder="ชื่อ เช่น บ้านภูเก็ต" onchange="expHome('+i+',this.value)">'
+      +'<button class="send navy" style="margin-top:10px" onclick="expHomeGps(this,'+i+')">📍 ตอนนี้อยู่ที่บ้านนี้ · ใช้ตำแหน่งตอนนี้</button>'
+      +'<div style="text-align:center;font-size:12px;color:var(--mut);margin:8px 0 6px">หรือ ถ้าไม่ได้อยู่ที่บ้านนี้</div>'
+      +'<input class="field" id="xLoc'+i+'" value="'+E(ok&&!isCo?x.at:'')+'" placeholder="พิมพ์ที่อยู่ (ตำบล อำเภอ จังหวัด) หรือวางลิงก์ Google Maps">'
+      +'<button class="send ghost" style="margin-top:8px" onclick="expHomeTxt('+i+')">บันทึกที่อยู่นี้</button>'
+      +(ok?'<div style="font-size:11.5px;color:var(--ok);margin-top:6px">ตำแหน่ง: '+E(x.at)+'</div>':'')+'</div>';
+  });
+  h+='<button class="send" onclick="expSetupDone()">'+(needSetup(P)?'ข้ามไปก่อน (ถามใหม่ครั้งหน้า)':'✓ เสร็จแล้ว เริ่มเบิกค่าใช้จ่าย')+'</button>'
+    +'<div style="font-size:11px;color:var(--mut);text-align:center;margin-top:8px">แก้ไขภายหลังได้ที่ "ข้อมูลผู้เบิก" ในหน้าเบิก</div>';
+  return h;
+}
+window.expHomeTxt=function(i){ var el=document.getElementById('xLoc'+i), v=parseLoc(el&&el.value); if(!v){ el&&el.focus(); toast('พิมพ์ที่อยู่ก่อนนะคะ'); return; } var P=prof(); if(!P.homes[i].name){ toast('ใส่ชื่อบ้านก่อนนะคะ'); return; } P.homes[i].at=v; saveProf(P); toast('บันทึกแล้ว'); render(); };
+window.expSetupDone=function(){ var P=prof(); if(needSetup(P)) setupSkip=true; else { P.setupDone=true; saveProf(P); } render(); };
+
 function render(){
   var o=document.getElementById('expOv'); if(!o) return;
   var p=expYM.split('-'), y=+p[0], m=+p[1]-1, P=prof();
+  if(needSetup(P)&&!setupSkip){ o.innerHTML='<div class="xw"><div class="xtop"><button class="wkbtn" onclick="expClose()">‹</button><b>เบิกค่าใช้จ่ายรายเดือน</b><span style="font-size:11px;color:var(--mut)">'+E(me.nick)+'</span></div>'+setupHtml(P)+'</div>'; o.scrollTop=0; return; }
   var h='<div class="xw"><div class="xtop"><button class="wkbtn" onclick="expClose()">‹</button><b>เบิกค่าใช้จ่ายรายเดือน</b><span style="font-size:11px;color:var(--mut)">'+E(me.nick)+'</span></div>';
   h+='<div class="xseg"><button class="'+(expTab==='trip'?'on':'')+'" onclick="expSetTab(\'trip\')">🚗 ค่าเดินทาง</button><button class="'+(expTab==='car'?'on':'')+'" onclick="expSetTab(\'car\')">⛽ ค่าใช้จ่ายรถ</button></div>';
   h+='<div class="wknav"><button class="wkbtn" onclick="expMon(-1)">‹</button><div class="c"><b>'+MN[m]+' '+(y+543)+'</b><small>แตะลูกศรเพื่อเปลี่ยนเดือน</small></div><button class="wkbtn" onclick="expMon(1)">›</button></div>';
@@ -125,8 +158,8 @@ function profHtml(P){
    +'<div class="xrow"><span style="width:86px">Center</span><input style="flex:1" value="'+E(P.center)+'" onchange="expProf(\'center\',this.value)" placeholder="จังหวัด center เช่น ภูเก็ต"></div>'
    +'<div class="xrow"><span style="width:86px">พาหนะหลัก</span><select style="flex:1" onchange="expProf(\'veh\',this.value)">'+Object.keys(VEH).map(function(k){return '<option value="'+k+'"'+(P.veh===k?' selected':'')+'>'+VEH[k]+'</option>';}).join('')+'</select></div>'
    +'<div class="xrow"><span style="width:86px">ทะเบียนรถ</span><input style="flex:1" value="'+E(P.plate)+'" onchange="expProf(\'plate\',this.value)" placeholder="เช่น ขท-1076 ภูเก็ต"></div>'
-   +'<div class="xrow"><span style="width:86px">ชื่อบ้าน</span><input style="flex:1" value="'+E(P.home)+'" onchange="expProf(\'home\',this.value)" placeholder="บ้านภูเก็ต"><button class="xmini" onclick="expHomeGps(this)">📍 '+(P.homeAt?'ตั้งแล้ว':'ตั้งพิกัดบ้าน')+'</button></div>'
-   +'<div style="font-size:11px;color:var(--mut);margin-top:6px">📍 กดตอนอยู่บ้าน 1 ครั้ง ระบบจะหาระยะจากบ้านไป รพ. ให้เอง</div></div>';
+   +P.homes.map(function(h,i){ return '<div class="xrow"><span style="width:86px">ฐานบ้าน '+(i+1)+'</span><input style="flex:1" value="'+E(h.name)+'" onchange="expHome('+i+',this.value)" placeholder="'+(i?'บ้านที่ 2 (ถ้ามี)':'บ้านภูเก็ต')+'"><button class="xmini" onclick="expHomeGps(this,'+i+')">📍 '+(h.at?'ตั้งแล้ว':'ตั้งพิกัด')+'</button></div>'; }).join('')
+   +'<div style="font-size:11px;color:var(--mut);margin-top:6px">📍 กดตอนอยู่ที่บ้านนั้น 1 ครั้ง ระบบจะหาระยะจากบ้านไป รพ. ให้เอง</div></div>';
 }
 function tripHtml(P){
   var h=heroTrip()+profHtml(P), n=daysIn(expYM);
@@ -158,7 +191,7 @@ function dayHtml(k,P){
     from=l.to;
   });
   h+='<div class="xchips">'+(d.legs.length<MAXLEG?'<button class="xmini" onclick="expAddLeg(\''+k+'\')">+ จุดแวะ</button>':'<span class="xwarn">ครบ 7 ช่วงตามฟอร์มแล้ว</span>')
-    +'<button class="xmini" onclick="expAddLeg(\''+k+'\',1)">🏠 กลับบ้าน</button>'
+    +homeNames(P).map(function(hn,hi){ return '<button class="xmini" onclick="expAddLeg(\''+k+'\','+(hi+1)+')">🏠 '+E(hn)+'</button>'; }).join('')
     +'<select class="xmini" onchange="expSet(\''+k+'\',\'veh\',this.value,1)">'+Object.keys(VEH).map(function(x){return '<option value="'+x+'"'+(d.veh===x?' selected':'')+'>'+VEH[x]+'</option>';}).join('')+'</select></div>';
   h+='<div class="xchips">'+ALW.map(function(a){ return '<button class="xchip'+(d.alw===a[0]?' on':'')+'" onclick="expSet(\''+k+'\',\'alw\',\''+a[0]+'\',1)">'+a[1]+'</button>'; }).join('')+'</div>';
   h+='<div class="xrow">โรงแรม<input style="width:90px;text-align:right" inputmode="decimal" value="'+E(d.hotel)+'" placeholder="0" oninput="expMoney(\''+k+'\',\'hotel\',this)"><button class="xmini" onclick="expSet(\''+k+'\',\'hotel\',\''+HOME_STAY+'\',1)">พักบ้าน '+HOME_STAY+'</button></div>'
@@ -169,6 +202,7 @@ function dayHtml(k,P){
 }
 function refreshTotals(k){ var c=dayCalc(day(k)), s=monthCalc(), t=document.getElementById('xt_'+k); if(t) t.textContent=money(c.tot);
   var a=document.getElementById('xTot'); if(a) a.textContent=money(s.tot)+' บาท'; var b=document.getElementById('xSub'); if(b) b.textContent='เดินทาง '+s.days+' วัน · '+km1(s.km)+' กม.'; var x=document.getElementById('xSum'); if(x) x.innerHTML=sumCells(s); }
+window.expHome=function(i,v){ var P=prof(); P.homes[i].name=String(v).trim(); saveProf(P); render(); };
 window.expProf=function(f,v){ var P=prof(); P[f]=String(v).trim(); saveProf(P); if(f==='home'||f==='veh'||f==='center') render(); };
 window.expSet=function(k,f,v,re){ var d=touch(k); d[f]=v; save(); if(re) render(); else refreshTotals(k); };
 window.expMoney=function(k,f,el){ var d=touch(k); d[f]=el.value; save(); refreshTotals(k); };
@@ -176,16 +210,16 @@ window.expLabel=function(k,v){ var d=touch(k); d.label=v; save(); };
 window.expLeg=function(k,i,f,v){ var d=touch(k), l=d.legs[i]; l[f]=v; if(f==='to'&&!(num(l.km)>0)){ var fr=i?d.legs[i-1].to:d.start, m=memKm(fr,v); if(m!=null) l.km=String(m); } save(); render(); };
 window.expKm=function(k,i,el){ var d=touch(k); d.legs[i].km=el.value; el.classList.toggle('need',!(num(el.value)>0)); save(); refreshTotals(k); };
 window.expKmDone=function(k,i){ var d=day(k), l=d.legs[i], fr=i?d.legs[i-1].to:d.start; learnKm(fr,l.to,num(l.km)); };
-window.expAddLeg=function(k,home){ var d=touch(k); if(d.legs.length>=MAXLEG){ toast('ฟอร์มรับได้ 7 ช่วงต่อวัน'); return; } var to=home?prof().home:'', fr=d.legs.length?d.legs[d.legs.length-1].to:d.start; d.legs.push({to:to,km:to?kmGuess(fr,to):''}); save(); render(); };
+window.expAddLeg=function(k,home){ var d=touch(k); if(d.legs.length>=MAXLEG){ toast('ฟอร์มรับได้ 7 ช่วงต่อวัน'); return; } var to=home?(homeNames(prof())[home-1]||''):'', fr=d.legs.length?d.legs[d.legs.length-1].to:d.start; d.legs.push({to:to,km:to?kmGuess(fr,to):''}); save(); render(); };
 window.expRmLeg=function(k,i){ var d=touch(k); d.legs.splice(i,1); save(); render(); };
 window.expAddTrip=function(k){ var d=touch(k), P=prof(); d.start=d.start||prevEnd(k)||P.home; if(!d.legs.length) d.legs.push({to:'',km:''}); d.label=''; save(); render(); setTimeout(function(){ var el=document.querySelector('#xd_'+k+' .xleg .pl'); if(el){ var all=document.querySelectorAll('#xd_'+k+' .xleg .pl'); all[all.length-1].focus(); } },50); };
 window.expClearDay=function(k){ showModal('ล้างข้อมูลวันนี้?','ระบบจะดึงสถานที่จากรายงานมาใหม่',[{label:'ล้าง',cls:'',val:1},{label:'ยกเลิก',cls:'ghost',val:0}]).then(function(v){ if(!v) return; delete st.days[k]; save(); render(); }); };
-window.expHomeGps=function(b){ if(!navigator.geolocation){ toast('เครื่องนี้หาตำแหน่งไม่ได้'); return; } b.classList.add('xbusy'); b.textContent='📍 กำลังหา…';
-  navigator.geolocation.getCurrentPosition(function(p){ var P=prof(); P.homeAt=p.coords.latitude.toFixed(5)+','+p.coords.longitude.toFixed(5); saveProf(P); toast('ตั้งพิกัดบ้านแล้ว'); render(); },function(){ b.classList.remove('xbusy'); b.textContent='📍 ตั้งพิกัดบ้าน'; toast('เปิดสิทธิ์ตำแหน่งก่อนนะคะ'); },{enableHighAccuracy:true,timeout:15000}); };
-function where(name){ var P=prof(); return (name===P.home&&P.homeAt)?P.homeAt:name; }
+window.expHomeGps=function(b,hi){ hi=hi||0; if(!navigator.geolocation){ toast('เครื่องนี้หาตำแหน่งไม่ได้'); return; } b.classList.add('xbusy'); b.textContent='📍 กำลังหา…';
+  navigator.geolocation.getCurrentPosition(function(p){ var P=prof(); P.homes[hi].at=p.coords.latitude.toFixed(5)+','+p.coords.longitude.toFixed(5); saveProf(P); toast('ตั้งพิกัด '+(P.homes[hi].name||'บ้าน')+' แล้ว'); render(); },function(){ b.classList.remove('xbusy'); b.textContent='📍 ตั้งพิกัด'; toast('เปิดสิทธิ์ตำแหน่งก่อนนะคะ'); },{enableHighAccuracy:true,timeout:15000}); };
+function where(name){ var P=prof(), a=homeAt(name,P); return a||name; }
 window.expSug=function(b){ var k=b.dataset.k, i=+b.dataset.i, d=day(k), l=d.legs[i], fr=i?d.legs[i-1].to:d.start, P=prof();
   if(!window.SYNC_URL){ toast('ยังไม่ได้เชื่อมระบบ'); return; }
-  if((fr===P.home||l.to===P.home)&&!P.homeAt){ showModal('ตั้งพิกัดบ้านก่อน','กดปุ่ม 📍 ตั้งพิกัดบ้าน (ด้านบน) ตอนอยู่บ้าน 1 ครั้ง ระบบจะหาระยะจากบ้านให้ได้'); return; }
+  if((isHome(fr,P)&&!homeAt(fr,P))||(isHome(l.to,P)&&!homeAt(l.to,P))){ showModal('ตั้งพิกัดบ้านก่อน','กดปุ่ม 📍 ตั้งพิกัด (ข้อมูลผู้เบิก ด้านบน) ตอนอยู่ที่บ้านนั้น 1 ครั้ง ระบบจะหาระยะจากบ้านให้ได้'); return; }
   b.classList.add('xbusy'); b.textContent='≈ กำลังหาระยะ…';
   fetch(SYNC_URL+'?op=route&from='+encodeURIComponent(where(fr))+'&to='+encodeURIComponent(where(l.to))+'&pv='+encodeURIComponent(provOf(l.to)||provOf(fr)||P.center||'')).then(function(r){return r.json();}).then(function(j){
     if(!j||!j.ok||!(j.km>0)) throw 0;
@@ -197,8 +231,8 @@ function missLegs(){ var out=[], n=daysIn(expYM); for(var i=1;i<=n;i++){ var k=d
 window.expSugAll=function(){
   var P=prof(), L=missLegs(), b=document.getElementById('xAllBtn'), got=0, fail=0, homeSkip=0;
   if(!window.SYNC_URL){ toast('ยังไม่ได้เชื่อมระบบ'); return; }
-  var todo=L.filter(function(x){ if((x.fr===P.home||x.to===P.home)&&!P.homeAt){ homeSkip++; return false; } return true; });
-  if(!todo.length){ showModal('ตั้งพิกัดบ้านก่อน','ช่วงที่เหลือเป็นการเดินทางจาก/กลับบ้าน · กดปุ่ม 📍 ตั้งพิกัดบ้าน ตอนอยู่บ้าน 1 ครั้ง แล้วกดหาระยะอีกครั้ง'); return; }
+  var todo=L.filter(function(x){ if((isHome(x.fr,P)&&!homeAt(x.fr,P))||(isHome(x.to,P)&&!homeAt(x.to,P))){ homeSkip++; return false; } return true; });
+  if(!todo.length){ showModal('ตั้งพิกัดบ้านก่อน','ช่วงที่เหลือเป็นการเดินทางจาก/กลับบ้าน · กดปุ่ม 📍 ตั้งพิกัด ของบ้านนั้น ตอนอยู่ที่บ้าน 1 ครั้ง แล้วกดหาระยะอีกครั้ง'); return; }
   if(b){ b.disabled=true; b.classList.add('xbusy'); }
   var seen={}, i=0;
   var next=function(){
