@@ -194,7 +194,7 @@
     <div class="goldline"></div>
     <p>เลือกชื่อของคุณเพื่อเริ่ม</p>
     <div id="namelist"></div>
-    <div class="ver"><b>v2.11</b> · 9 พ.ย. 69</div>
+    <div class="ver"><b>v2.12</b> · 15 พ.ย. 69</div>
   </div>
 
   <!-- ========== APP ========== -->
@@ -276,24 +276,24 @@
 
       <div class="hidden" id="extraCard"><div id="extraFields"></div></div>
 
-      <div class="ver"><b>v2.11</b> · 9 พ.ย. 69</div>
+      <div class="ver"><b>v2.12</b> · 15 พ.ย. 69</div>
     </div>
 
     <!-- ========== แพลนงาน ========== -->
     <div class="body hidden" id="tabPlan">
       <div id="planBody"></div>
-      <div class="ver"><b>v2.11</b> · 9 พ.ย. 69</div>
+      <div class="ver"><b>v2.12</b> · 15 พ.ย. 69</div>
     </div>
 
     <!-- ========== รายงานของฉัน ========== -->
     <div class="body hidden" id="tabMine">
       <div id="mineBody"></div>
-      <div class="ver"><b>v2.11</b> · 9 พ.ย. 69</div>
+      <div class="ver"><b>v2.12</b> · 15 พ.ย. 69</div>
     </div>
 
     <div class="body hidden" id="tabTech">
       <div id="techBody"></div>
-      <div class="ver"><b>v2.11</b> · 9 พ.ย. 69</div>
+      <div class="ver"><b>v2.12</b> · 15 พ.ย. 69</div>
     </div>
 
     <div class="bar" id="reportBar">
@@ -318,7 +318,7 @@
     <button class="send navy" style="max-width:280px;margin:0 auto" onclick="newReport()">+ บันทึกเพิ่ม (วันเดียวกัน)</button>
     <button class="send ghost" style="max-width:280px;margin:10px auto 0" onclick="goMine()">ดูรายงานของฉัน</button>
     <button class="send ghost" style="max-width:280px;margin:10px auto 0" onclick="printReport()">แชร์รายงานนี้</button>
-    <div class="ver"><b>v2.11</b> · 9 พ.ย. 69</div>
+    <div class="ver"><b>v2.12</b> · 15 พ.ย. 69</div>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -341,6 +341,7 @@
 <script src="data.js"></script>
 <script src="zone.js"></script>
 <script src="config.js"></script>
+<script src="exp.js?v=1"></script>
 <script>
 var CFG = window.APP_CONFIG || {};
 var SALES = window.SALES || [];
@@ -1219,6 +1220,7 @@ function dayRow(list){
 /* ===== สำรอง / กู้คืนข้อมูล (เปลี่ยนเครื่อง) — ไฟล์ .json เก็บรายงาน + แพลน ของเครื่องนี้ ===== */
 function backupData(){
   var data={}; BK_KEYS.forEach(function(k){ var v=localStorage.getItem(k); if(v!=null) data[k]=v; });
+  for(var bi=0;bi<localStorage.length;bi++){ var bk=localStorage.key(bi); if(/^kosin_sales_(exp|routes)/.test(bk)) data[bk]=localStorage.getItem(bk); }   // เบิกค่าใช้จ่าย
   var d=new Date(), ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   var blob=new Blob([JSON.stringify({app:BK_APP,at:d.toISOString(),data:data})],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='สำรองรายงาน-'+BK_APP+'-'+bkName()+'-'+ds+'.json'; document.body.appendChild(a); a.click();
@@ -1230,7 +1232,7 @@ function restoreData(){
     rd.onload=function(){ try{ var o=JSON.parse(rd.result);
         if(!o||o.app!==BK_APP||!o.data){ alert('ไฟล์นี้ไม่ใช่ไฟล์สำรองของแอปนี้'); return; }
         if(!confirm('กู้คืนข้อมูลจากไฟล์สำรอง (บันทึกเมื่อ '+new Date(o.at).toLocaleString('th-TH')+')?\nข้อมูลรายงาน/แพลนในเครื่องนี้จะถูกแทนที่ด้วยข้อมูลในไฟล์')) return;
-        Object.keys(o.data).forEach(function(k){ if(BK_KEYS.indexOf(k)>-1) localStorage.setItem(k,o.data[k]); });
+        Object.keys(o.data).forEach(function(k){ if(BK_KEYS.indexOf(k)>-1||/^kosin_sales_(exp|routes)/.test(k)) localStorage.setItem(k,o.data[k]); });
         alert('กู้คืนเรียบร้อย'); location.reload();
       }catch(e){ alert('อ่านไฟล์ไม่ได้: '+e.message); } };
     rd.readAsText(f); };
@@ -1320,6 +1322,7 @@ function renderMine(){ syncPull();
   var h='<div class="hero"><div class="t">รายงานการทำงาน · สัปดาห์ที่ '+weekNo(ws)+' เดือน '+MN_FULL[d0.getMonth()]+' '+(d0.getFullYear()+543)+'</div>'
     +'<div class="n">'+esc((me.full+(me.nick?' ('+me.nick+')':'')))+'</div><div class="s">'+inWeek.length+' รายงาน · '+inWeek.reduce(function(a,r){return a+(r.photoCount||0);},0)+' รูป</div>'
     +'</div>';
+  if(window.EXP_IS_UPC&&EXP_IS_UPC()) h+='<button class="send" style="margin-bottom:12px" onclick="openExpense()">💰 เบิกค่าใช้จ่ายรายเดือน</button>';   // 15 พ.ย. 69 เซล ตจว.
   h+='<div class="wknav"><button class="wkbtn" onclick="mineNav(-1)">‹</button><div class="c"><b>'+fmtShort(ws)+' – '+fmtShort(we)+' '+(new Date(we+'T00:00:00').getFullYear()+543)+'</b><small>'+(ws===thisWs?'สัปดาห์นี้':(ws>thisWs?'สัปดาห์หน้า':'ผ่านมาแล้ว'))+' · จันทร์–อาทิตย์</small></div><button class="wkbtn" onclick="mineNav(1)">›</button></div>';
   if(sent) h+='<div class="sentbox">🔒 ส่งสัปดาห์นี้แล้ว '+new Date(sent).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' · ปิดสัปดาห์ (กำลังตรวจ)</div>';
   for(var i=0;i<7;i++){
