@@ -1,6 +1,6 @@
 // service worker ขั้นต่ำ — ให้ติดตั้งเป็นแอปได้ (มือถือ/คอม) · ดึงจากเน็ตก่อน ไม่มีเน็ตค่อยใช้ของที่เก็บไว้
-var CACHE = 'kosin-sales-v2.44';
-var SHELL = ['./', './index.html', './config.js', './data.js','./zone.js','./exp.js?v=4', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png', './favicon-32.png'];
+var CACHE = 'kosin-sales-v2.45';
+var SHELL = ['./', './index.html', './config.js', './data.js?v=2','./zone.js?v=2','./exp.js?v=4', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png', './favicon-32.png'];
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(SHELL); }).then(function(){ return self.skipWaiting(); }));
 });
